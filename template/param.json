@@ -1,0 +1,13 @@
+{"Nifg": 3, 
+"v_orig": 1, 
+"h_orig": 1, 
+"SNR": 70, 
+"step_orig": {"height":1,"velocity":1}, 
+"std_param": 1, 
+"param_orig": {"height":0,"velocity":0},
+"param_name": ["height","velocity"], 
+"Num_search_min": {"height":2,"velocity":2}, 
+"Num_search_max": {"height":2,"velocity":2}, 
+"revisit_cycle": 12,
+"normal_baseline": [[765.0543117 , 419.56726787 , 56.14188676]]
+}
