@@ -84,7 +84,7 @@ def test_compute_temporal_coherence():
     desired=np.array([[np.exp(1j)+np.exp(3j)+np.exp(5j),np.exp(0)+np.exp(2j)+np.exp(4j),np.exp(-1j)+np.exp(1j)+np.exp(3j)]])/3
     assert np.allclose(actual, desired)
 
-def test_comppute_param_index():
+def test_compute_param_index():
     with open('template/param.json') as f:
         param_file = json.load(f)
     
@@ -101,7 +101,7 @@ def test_comppute_param_index():
     )
     af_obj._searched_phase_size=[2,2]
     af_obj.compute_param_index()
-    actual=af_obj.param_index
+    actual=af_obj._param_index
     desired=(0, 1)
     actual_coh=af_obj.coh_t[0][af_obj._best_index]    
     desired_coh=np.exp(2) + np.exp(4) + np.exp(1)
@@ -112,7 +112,7 @@ def test_compute_param():
     with open('template/param1.json') as f:
         param_file = json.load(f)
     af_obj = af.Periodogram_estimation(param_file)
-    af_obj.param_index=(0,1)
+    af_obj._param_index=(0,1)
     af_obj._param={"height":0,"velocity":0}
     af_obj.compute_param()
     actual=af_obj._param

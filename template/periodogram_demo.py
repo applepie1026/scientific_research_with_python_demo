@@ -12,8 +12,8 @@ T1 = time.perf_counter()
 # ------------------------------------------------
 WAVELENGTH = 0.056  # [unit:m]
 Nifg = 20
-v_orig = 0.005  # [mm/year] 减少v，也可以改善估计结果，相当于减少了重访周期
-h_orig = 120  # [m]，整数 30 循环迭代搜索结果有问题
+v_orig = 0.05  # [mm/year] 减少v，也可以改善估计结果，相当于减少了重访周期
+h_orig = 30  # [m]，整数 30 循环迭代搜索结果有问题
 noise_level = 70
 # noise_level = np.pi * 30 / 180
 # noise_phase = af.sim_phase_noise(noise_level, Nifg)

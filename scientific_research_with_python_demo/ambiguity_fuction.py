@@ -1,4 +1,5 @@
 import numpy as np
+from copy import deepcopy
 # Constant
 WAVELENGTH = 0.056  # [unit:m]
 H = 780000  # satellite vertical height[m]
@@ -7,24 +8,27 @@ R = H / np.cos(Incidence_angle)  # range to the master antenna. test
 m2ph = 4 * np.pi / WAVELENGTH
 # ------------------------------------------------
 class Periodogram_estimation:
-
     # ------------------------------------------------
     # initial parameters
     # ------------------------------------------------
     def __init__(self, param_file):
-        self.Nifg = param_file['Nifg']
-        self.v_orig = param_file['v_orig']
-        self.h_orig = param_file['h_orig']
-        self.SNR = param_file['SNR']
-        self.step_orig = param_file['step_orig']
-        self.std_param = param_file['std_param']
-        self.param_orig = param_file['param_orig']
-        self.param_name = param_file['param_name']
-        self.Num_search_min = param_file['Num_search_min']
-        self.Num_search_max = param_file['Num_search_max']
-        self.revisit_cycle = param_file['revisit_cycle']
-        self.normal_baseline = np.array(param_file['normal_baseline'])
-        self._param=param_file['param_orig']
+        
+        param = deepcopy(param_file)
+        self.Nifg = param['Nifg']
+        self.v_orig = param['v_orig']
+        self.h_orig = param['h_orig']
+        self.SNR = param['SNR']
+        self.step_orig = param['step_orig']
+        self.std_param = param['std_param']
+        self.param_orig = param['param_orig']
+        self.param_name = param['param_name']
+        self.Num_search_min = param['Num_search_min']
+        self.Num_search_max = param['Num_search_max']
+        self.revisit_cycle = param['revisit_cycle']
+        # self.normal_baseline = np.array(param_file['normal_baseline'])
+        self.Bn=param['Bn']
+        self.normal_baseline =np.random.randn(1,self.Nifg) *self.Bn
+        self._param=param['param_orig']
 
 
     @property
@@ -35,7 +39,7 @@ class Periodogram_estimation:
     @property
     def h2ph(self):
 
-        # normal_baseline =np.random.randn(1,self.Nifg) *333
+        
         self._h2ph = (m2ph * self.normal_baseline / (R*np.sin(Incidence_angle))).T
         return self._h2ph
     
@@ -135,16 +139,25 @@ class Periodogram_estimation:
 
             count += 1
     
-    def compute_success_rate(self):
-        iteration = 0
-        success_count = 0
-        while iteration<10000:
-            self.simulate_arc_phase()
-            self.searching_loop()
-            if abs(self._param["height"] - self.h_orig) < 0.05 and abs(self._param["velocity"] - self.v_orig) < 0.00005:
-                success_count += 1
-
-            iteration+=1
+def compute_success_rate(param_file):
+    iteration = 0
+    success_count = 0
+    while iteration<100:
+        est=Periodogram_estimation(param_file)
+        est.simulate_arc_phase()
+        est.searching_loop()
+        print(est._param)
+        if abs(est._param["height"] - est.h_orig) < 0.05 and abs(est._param["velocity"] - est.v_orig) < 0.00005:
+            success_count += 1
         
-        self.success_rate = success_count / iteration
+        iteration+=1
+        est.__init__(param_file)
+    return success_count / iteration
 
+def param_experiment(param_name,param_range,param_file):
+    success_rate=np.zeros(len(param_range))
+    for i in range(len(param_range)):
+        param_file[param_name]=param_range[i]
+        success_rate[i]=compute_success_rate(param_file)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+        print(success_rate[i])
+    return success_rate
