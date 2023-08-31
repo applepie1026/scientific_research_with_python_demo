@@ -1,5 +1,6 @@
 import numpy as np
 from copy import deepcopy
+import json
 
 # Constant
 WAVELENGTH = 0.056  # [unit:m]
@@ -50,7 +51,7 @@ class Periodogram_estimation:
         self.normal_baseline = np.random.randn(1, self.Nifg) * self.Bn
         self._param = param["param_orig"]
 
-    @property
+    # @property
     def v2ph(self):
         """compute factors of velocity to  arc phase
 
@@ -61,10 +62,10 @@ class Periodogram_estimation:
             _array_: factors of velocity to  arc phase
         """
         time_baseline = (np.arange(1, self.Nifg + 1, 1)).reshape(1, self.Nifg)
-        self._v2ph = (m2ph * self.revisit_cycle * time_baseline / 365).T
-        return self._v2ph
+        v2ph = (m2ph * self.revisit_cycle * time_baseline / 365).T
+        return v2ph
 
-    @property
+    # @property
     def h2ph(self):
         """compute factors of topographic height error to  arc phase
 
@@ -72,8 +73,8 @@ class Periodogram_estimation:
             array: factors of topographic height error to  arc phase
         """
 
-        self._h2ph = (m2ph * self.normal_baseline / (R * np.sin(Incidence_angle))).T
-        return self._h2ph
+        h2ph = (m2ph * self.normal_baseline / (R * np.sin(Incidence_angle))).T
+        return h2ph
 
     @staticmethod
     def wrap_phase(phase):
@@ -135,8 +136,11 @@ class Periodogram_estimation:
             phase_unwrap (array): true arc phase without phase ambiguities
             arc_phase (array): observed arc phase based on interferograms
         """
+        # factors of parameters to  arc phase
+        self._h2ph = self.h2ph()
+        self._v2ph = self.v2ph()
         # simulate true arc phase without phase ambiguities
-        self._phase_unwrap = self.v2ph * self.v_orig + self.h2ph * self.h_orig
+        self._phase_unwrap = self._v2ph * self.v_orig + self._h2ph * self.h_orig
         # generate gaussian noise of the 'Nifgs' arc phases based on SNR
         noise = Periodogram_estimation._add_gaussian_noise(self._phase_unwrap, self.SNR)
         phase_true = self._phase_unwrap + noise
@@ -158,11 +162,7 @@ class Periodogram_estimation:
         """
         param_space = dict()
         for key in self.param_name:
-            param_space[key] = (
-                np.arange(-self.Num_search_min[key], self.Num_search_max[key] + 1, 1)
-                * self.step_orig[key]
-                + self.param_orig[key]
-            )
+            param_space[key] = np.arange(-self.Num_search_min[key], self.Num_search_max[key] + 1, 1) * self.step_orig[key] + self._param[key]
 
         return param_space
 
@@ -214,9 +214,7 @@ class Periodogram_estimation:
         searched_phase["velocity"] = self.searched_param["velocity"] * self._v2ph
         # shape searched space by kronecker product
 
-        self._searched_space = np.kron(
-            searched_phase["velocity"], np.ones((1, self.searched_param["height"].size))
-        ) + np.kron(
+        self._searched_space = np.kron(searched_phase["velocity"], np.ones((1, self.searched_param["height"].size))) + np.kron(
             np.ones((1, self.searched_param["velocity"].size)), searched_phase["height"]
         )
         # search_space = np.kron(search_phase1, np.ones((1, num_serach[0]))) + np.kron(np.ones((1, num_serach[1])), search_phase2)
@@ -241,24 +239,24 @@ class Periodogram_estimation:
 
         # resdual_phase = phase_observation - phase_model
         # temporal coherence γ=|(1/Nifgs)Σexp(j*(φ0s_obs-φ0s_modle))|
-        coh_phase = (self.arc_phase * np.ones((1, self._searched_space.shape[1]))- self._searched_space)
+        coh_phase = self.arc_phase * np.ones((1, self._searched_space.shape[1])) - self._searched_space
         # temporal coherence
         self.coh_t = np.sum(np.exp(1j * coh_phase), axis=0, keepdims=True) / self.Nifg
 
     def compute_param_index(self):
-        """search best coh_t of each paramters (v,h) based on several interferograms 
+        """search best coh_t of each paramters (v,h) based on several interferograms
         and get its index in the searched space
-        
+
         Parameters
         ----------
             coh_t (array): temporal coherence of the searched phase space per (v,h) pair
             searched_phase_size (array): the size of searched phase space
-        
+
         Output
         ------
             best_index (array): the index of the best coh_t per (v,h) pair in the searched space
-        """        
-        
+        """
+
         self._best_index = np.argmax(np.abs(self.coh_t))
         self._param_index = np.unravel_index(self._best_index, self._searched_phase_size, order="F")
 
@@ -271,14 +269,14 @@ class Periodogram_estimation:
             param_index (array): the index of the best coh_t per (v,h) pair in the searched space
             Num_search_min (array): the minimum index of the searching parameters space
             step_orig (dict): the step of searching parameters space
-        
+
         Output
         ------
             param (dict): the best paramters (v,h) based on the index of the best coh_t per (v,h) pair in the searched space
 
-        """        
+        """
         for i, key in enumerate(self.param_name):
-            self._param[key] = np.round(self.param_orig[key]+ (self._param_index[i] - self.Num_search_min[key])* self.step_orig[key],8,)
+            self._param[key] = np.round(self._param[key] + (self._param_index[i] - self.Num_search_min[key]) * self.step_orig[key], 8)
 
     def _periodogram_estimation(self):
         """parameter estimation based on periodogram method
@@ -287,25 +285,24 @@ class Periodogram_estimation:
             step2: compute temporal coherence
             step3: compute param index
             step4: compute param
-        """        
+        """
         self._construct_searched_space()
         self.compute_temporal_coherence()
         self.compute_param_index()
         self.compute_param()
 
     def searching_loop(self):
-        """searching loop based on periodogram method 
-            we have set the maximum iteration number as 10 and step bound 
-            as 1.0e-8 and 1.0e-4 for velocity and height respectively.
-            After each iteration, the step of searching space will be reduced by 10 times.
-            and the Num_search_min and Num_search_max will be set as 10 from the second iteration to the end.
-            The experiments shows that the searching loop could improve the precisionof the estimated parameters 
-            and somtimes correct the wrong resolution.
+        """searching loop based on periodogram method
+        we have set the maximum iteration number as 10 and step bound
+        as 1.0e-8 and 1.0e-4 for velocity and height respectively.
+        After each iteration, the step of searching space will be reduced by 10 times.
+        and the Num_search_min and Num_search_max will be set as 10 from the second iteration to the end.
+        The experiments shows that the searching loop could improve the precisionof the estimated parameters
+        and somtimes correct the wrong resolution.
 
-        """        
+        """
         count = 0
-        while (count <= 10 and self.step_orig["velocity"] >= 1.0e-8 and self.step_orig["height"] >= 1.0e-4):
-
+        while count <= 10 and self.step_orig["velocity"] >= 1.0e-8 and self.step_orig["height"] >= 1.0e-4:
             self._periodogram_estimation()
 
             for key in self.param_name:
@@ -323,7 +320,7 @@ def compute_success_rate(param_file):
     ----------
     param_file : _dict_
         input parameters for the simulation and estimation
-    """    
+    """
 
     iteration = 0
     success_count = 0
@@ -334,20 +331,19 @@ def compute_success_rate(param_file):
         est.simulate_arc_phase()
         est.searching_loop()
         estimated_param[iteration] = list(est._param.values())
-        print(est._param)
-        if (abs(est._param["height"] - est.h_orig) < 0.05 and abs(est._param["velocity"] - est.v_orig) < 0.00005):
+        # print(est._param)
+        if abs(est._param["height"] - est.h_orig) < 0.05 and abs(est._param["velocity"] - est.v_orig) < 0.00005:
             success_count += 1
 
         iteration += 1
-
-        est.__init__(param_file)
-    with open("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save"
-        + param_file["file_name"]
-        + "est_param"
-        + ".csv",
-         "a") as f:
-    # 按列追加保存
-        np.savetxt(f, estimated_param, delimiter=",")
+        del est
+    # with open("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/"
+    #     + param_file["file_name"]
+    #     + "est_param"
+    #     + ".csv",
+    #      "a") as f:
+    # # 按列追加保存
+    #     np.savetxt(f, estimated_param, delimiter=",")
     return success_count / 100
 
 
@@ -358,7 +354,7 @@ def param_experiment(param_name, param_range, param_file):
     Parameters
     ----------
     param_name : _str_
-        name of the parameters to be estimated 
+        name of the parameters to be estimated
     param_range : _array_
         the range of the parameters to be estimated based on a fixed step
         such as np.arange(10,101,1) for Nifgs
@@ -369,19 +365,16 @@ def param_experiment(param_name, param_range, param_file):
     -------
     _array_
         success rate we get from experiments
-    """    
+    """
     success_rate = np.zeros(len(param_range))
     for i in range(len(param_range)):
         param_file[param_name] = param_range[i]
+        print(param_name, "=", param_range[i])
         success_rate[i] = compute_success_rate(param_file)
         print(success_rate[i])
 
     np.savetxt(
-        "/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save"
-        + param_file["file_name"]
-        + "success_rate"
-        + ".csv",
-        success_rate,
+        "/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/" + param_file["file_name"] + "success_rate" + ".csv", success_rate
     )
 
     return success_rate

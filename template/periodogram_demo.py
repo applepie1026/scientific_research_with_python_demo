@@ -23,7 +23,7 @@ param_orig = np.array([0, 0])
 param_name = ["height", "velocity"]
 
 # calculate the number of search
-Num_search1_max = 120 # Num_search1 for height
+Num_search1_max = 120  # Num_search1 for height
 Num_search1_min = 120
 Num_search2_max = 1600  # Num_search2 for velocity
 Num_search2_min = 1600
@@ -69,7 +69,7 @@ while iteration < 100:
     # ------------------------------------------------
     count = 0
     est_param = {}
-    while count <= 10 and data_set["velocity"]["step_orig"] > 1.0e-8 and data_set["height"]["step_orig"] > 1.0e-4:
+    while count <= 1 and data_set["velocity"]["step_orig"] > 1.0e-8 and data_set["height"]["step_orig"] > 1.0e-4:
         # search the parameters
         est_param, best = periodogram(data_set, phase_obs)
         # update the parameters
