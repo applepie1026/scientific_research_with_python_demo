@@ -4,11 +4,11 @@ import scientific_research_with_python_demo.ps_vce as vc
 import scientific_research_with_python_demo.LAMBDA as ils
 
 WAVELENGTH = 0.056  # [unit:m]
-Nifg = 10
-v_orig = 0.5  # [mm/year] 减少v，也可以改善估计结果，相当于减少了重访周期
-h_orig = 40  # [m]，整数 30 循环迭代搜索结果有问题
+Nifg = 30
+v_orig = 0.01  # [mm/year] 减少v，也可以改善估计结果，相当于减少了重访周期
+h_orig = 30  # [m]，整数 30 循环迭代搜索结果有问题
 pseudo_obs = np.array([[28, 0.04]]).T
-noise_level = 30
+noise_level = 20
 param_name = ["height", "velocity"]
 normal_baseline = np.random.randn(1, Nifg) * 333
 # print(normal_baseline)
@@ -33,7 +33,7 @@ Q_b0 = vc.pseudoVCM(dh, vel)
 Q_a_guess = vc.ambiguity_VC(Q_y, A, Q_b0)
 
 # 模拟解缠相位，以及缠绕后的观测相位
-phase_obs, srn, phase_unwrap = af.sim_arc_phase(v_orig, h_orig, v2ph, h2ph, noise_level)
+phase_obs, srn, phase_unwrap, h_phase, v_phase = af.sim_arc_phase(v_orig, h_orig, v2ph, h2ph, noise_level)
 # print(phase_obs)
 # 获得一个粗略的浮点解，默认 pseudo v , h 均为 0
 a_hat = phase_obs / (2 * np.pi)

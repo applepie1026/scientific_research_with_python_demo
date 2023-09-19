@@ -9,12 +9,19 @@ R = H / np.cos(Incidence_angle)  # range to the master antenna. test
 m2ph = 4 * np.pi / WAVELENGTH
 
 
-def input_parameters(par2ph, step, Num_search, param_orig, param_name):
+def input_parameters(par2ph, step, Num_search, param_orig, param_name, test_param, set_param):
     data_set = {
-        key: {"par2ph": par2ph[i], "Num_search_max": Num_search[i][0], "Num_search_min": Num_search[i][1], "step_orig": step[i], "param_orig": param_orig[i]}
+        key: {
+            "par2ph": par2ph[i],
+            "Num_search_max": Num_search[i][0],
+            "Num_search_min": Num_search[i][1],
+            "step_orig": step[i],
+            "param_orig": param_orig[i],
+            "set_param": set_param[i],
+        }
         for i, key in enumerate(param_name)
     }
-
+    data_set["test_param_name"] = test_param
     return data_set
 
 
@@ -96,13 +103,81 @@ def sim_arc_phase(v: float, h: float, v2ph, h2ph: float, SNR) -> np.ndarray:
     v_phase = _coef2phase(v2ph, v)
     h_phase = _coef2phase(h2ph, h)
     phase_unwrap = v_phase + h_phase
-    # noise = gauss_noise(phase_unwrap, SNR)
-    noise = add_gaussian_noise(phase_unwrap, SNR)
+    # noise = add_gaussian_noise(phase_unwrap, SNR)
+    noise = add_gaussian_noise2(len(phase_unwrap), SNR)
     phase_true = phase_unwrap + noise
     arc_phase = wrap_phase(phase_true)
     # snr_check = check_snr(phase_unwrap, phase_true)
     snr_check = check_snr2(phase_unwrap, noise)
-    return arc_phase, snr_check, phase_unwrap
+    return arc_phase, snr_check, phase_unwrap, h_phase, v_phase
+
+
+def sim_arc_phase_lab(v: float, h: float, v2ph, h2ph: float, SNR) -> np.ndarray:
+    # v_phase = v2phase(v, time_range)[0]
+    # h_phase = h2phase(h, normal_baseline)[0]
+    # v2ph = v2phase(v, time_range)[1]
+    # h2ph = h2phase(h, normal_baseline)[0]
+    v_phase = _coef2phase(v2ph, v)
+    h_phase = _coef2phase(h2ph, h)
+    phase_unwrap = v_phase + h_phase
+    # noise = add_gaussian_noise(phase_unwrap, SNR)
+    noise = add_gaussian_noise2(len(phase_unwrap), SNR)
+    phase_true = phase_unwrap + noise
+    arc_phase = wrap_phase(phase_true)
+    # snr_check = check_snr(phase_unwrap, phase_true)
+    snr_check = check_snr2(phase_unwrap, noise)
+    return arc_phase, snr_check, phase_unwrap, h_phase, v_phase
+
+
+def sim_arc_phase_lab2(v: float, h: float, v2ph, h2ph: float, SNR) -> np.ndarray:
+    # v_phase = v2phase(v, time_range)[0]
+    # h_phase = h2phase(h, normal_baseline)[0]
+    # v2ph = v2phase(v, time_range)[1]
+    # h2ph = h2phase(h, normal_baseline)[0]
+    v_phase = _coef2phase(v2ph, v)
+    h_phase = _coef2phase(h2ph, h)
+    phase_unwrap = v_phase
+    noise = add_gaussian_noise(phase_unwrap, SNR)
+    # noise = add_gaussian_noise2(len(phase_unwrap), SNR)
+    phase_true = phase_unwrap + noise
+    arc_phase = wrap_phase(phase_true)
+    # snr_check = check_snr(phase_unwrap, phase_true)
+    snr_check = check_snr2(phase_unwrap, noise)
+    return arc_phase, snr_check, phase_unwrap, h_phase, v_phase
+
+
+def sim_arc_phase_lab3(v: float, h: float, v2ph, h2ph: float, SNR) -> np.ndarray:
+    # v_phase = v2phase(v, time_range)[0]
+    # h_phase = h2phase(h, normal_baseline)[0]
+    # v2ph = v2phase(v, time_range)[1]
+    # h2ph = h2phase(h, normal_baseline)[0]
+    v_phase = _coef2phase(v2ph, v)
+    h_phase = _coef2phase(h2ph, h)
+    phase_unwrap = v_phase
+    # noise = add_gaussian_noise(phase_unwrap, SNR)
+    noise = add_gaussian_noise2(len(phase_unwrap), SNR)
+    phase_true = phase_unwrap + noise
+    arc_phase = wrap_phase(phase_true)
+    # snr_check = check_snr(phase_unwrap, phase_true)
+    snr_check = check_snr2(phase_unwrap, noise)
+    return arc_phase, snr_check, phase_unwrap, h_phase, v_phase
+
+
+def sim_arc_phase_lab4(v: float, h: float, v2ph, h2ph: float, SNR) -> np.ndarray:
+    # v_phase = v2phase(v, time_range)[0]
+    # h_phase = h2phase(h, normal_baseline)[0]
+    # v2ph = v2phase(v, time_range)[1]
+    # h2ph = h2phase(h, normal_baseline)[0]
+    v_phase = _coef2phase(v2ph, v)
+    h_phase = _coef2phase(h2ph, h)
+    phase_unwrap = h_phase
+    # noise = add_gaussian_noise(phase_unwrap, SNR)
+    noise = add_gaussian_noise2(len(phase_unwrap), SNR)
+    phase_true = phase_unwrap + noise
+    arc_phase = wrap_phase(phase_true)
+    # snr_check = check_snr(phase_unwrap, phase_true)
+    snr_check = check_snr2(phase_unwrap, noise)
+    return arc_phase, snr_check, phase_unwrap, h_phase, v_phase
 
 
 def v_coef(time_baseline) -> np.ndarray:
@@ -121,6 +196,27 @@ def v_coef(time_baseline) -> np.ndarray:
 
     temporal_step = 12  # [unit:d]
     temporal_samples = temporal_step * time_baseline
+    # distance = velocity * days (convert from d to yr because velocity is in m/yr)
+    v2phase_coefficeint = temporal_samples / 365
+
+    return v2phase_coefficeint
+
+
+def v_coef2(time_baseline) -> np.ndarray:
+    """caculate v2phase factor
+
+    Parameters
+    ----------
+    time_baseline : int
+        the factor to caclulate temporal baseline
+
+    Returns
+    -------
+    np.ndarray
+        v to phase factors
+    """
+
+    temporal_samples = time_baseline
     # distance = velocity * days (convert from d to yr because velocity is in m/yr)
     v2phase_coefficeint = temporal_samples / 365
 
@@ -228,6 +324,52 @@ def add_gaussian_noise(signal, SNR):
     noise = (np.sqrt(noise_variance) / np.std(noise)) * noise
 
     return noise
+
+
+def add_gaussian_noise2(nifg, noise_level_set):
+    noise_std = np.zeros((1, nifg + 1))
+    noise_level = np.zeros((nifg + 1, 1))
+    noise_level[0] = np.pi * noise_level_set / 180
+    noise_std[0][0] = np.random.randn(1) * noise_level[0]
+
+    for v in range(nifg):
+        noise_level[v + 1] = (np.pi * noise_level_set / 180) + np.random.randn(1) * (np.pi * 5 / 180)
+        noise_std[0][v + 1] = np.random.randn(1) * noise_level[v + 1]
+    noise_phase = np.zeros((nifg, 1))
+    for i in range(nifg):
+        noise_phase[i] = noise_std[0][i] + noise_std[0][i + 1]
+    return noise_phase
+
+
+def add_gaussian_noise3(nifg, noise_level_set):
+    noise_std = np.zeros((nifg + 1, 1, 2))
+    noise_level = np.zeros((nifg + 1, 1))
+    noise_level[0] = np.pi * noise_level_set / 180
+    noise_std[0, ::] = np.random.randn(2) * noise_level[0]
+
+    for v in range(nifg):
+        noise_level[v + 1] = (np.pi * noise_level_set / 180) + np.random.randn(1) * (np.pi * 5 / 180)
+        noise_std[v + 1, ::] = np.random.randn(2) * noise_level[v + 1]
+    noise_phase = np.zeros((nifg, 1))
+    for i in range(nifg):
+        noise_phase[i] = noise_std[i, :, 0] + noise_std[i + 1, :, 0] - noise_std[i, :, 1] - noise_std[i + 1, :, 1]
+
+    return noise_phase
+
+
+def add_gaussian_noise4(nifg, noise_level_set):
+    noise_std = np.zeros((1, nifg + 1))
+    noise_level = np.zeros((nifg + 1, 1))
+    noise_level[0] = np.pi * noise_level_set / 180
+    noise_std[0][0] = np.random.randn(1) * noise_level[0]
+
+    for v in range(nifg):
+        noise_level[v + 1] = np.pi * noise_level_set / 180 + np.random.randn(1) * (np.pi * 5 / 180)
+        noise_std[0][v + 1] = np.random.randn(1) * noise_level[v + 1]
+    noise_phase = np.zeros((nifg, 1))
+    for i in range(nifg):
+        noise_phase[i] = (noise_std[0][i] + noise_std[0][i + 1]) / 2
+    return noise_phase
 
 
 def check_snr(signal, noise):
@@ -468,6 +610,27 @@ def compute_param(param_index, step, param_orig, num_search):
     param = np.round(param_orig + (param_index - num_search) * step, 8)
 
     return param
+
+
+def param_threshold(param2phase, phase_threshold):
+    """set threshold for paramters
+
+    Parameters
+    ----------
+    param : float
+        (v,h) of max coherence each iterations
+    data_set : float
+        the dictionary of parameters
+
+    Returns
+    -------
+    param: float
+        (v,h) of max coherence each iterations
+    """
+    factor = abs(np.mean(param2phase))
+    threshold = phase_threshold / factor
+
+    return threshold
 
 
 def correct_h2ph(h2ph, n):
