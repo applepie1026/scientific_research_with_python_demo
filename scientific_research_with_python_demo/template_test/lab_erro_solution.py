@@ -1,5 +1,6 @@
 import scientific_research_with_python_demo.utils as af
 from scientific_research_with_python_demo.periodogram_test import periodogram_lab, periodogram_lab2
+from scientific_research_with_python_demo.periodogram_main import periodogram
 import scientific_research_with_python_demo.data_plot as dp
 import numpy as np
 import time
@@ -13,7 +14,7 @@ T1 = time.perf_counter()
 WAVELENGTH = 0.056  # [unit:m]
 Nifg = 30
 h_orig = 30  # [m]，整数 30 循环迭代搜索结果有问题
-noise_level = 20
+noise_level = 1
 # noise_phase = af.sim_phase_noise(noise_level, Nifg)
 step_orig = np.array([1.0, 0.0001])
 # std_param = np.array([40, 0.06])
@@ -21,7 +22,7 @@ param_orig = np.array([0, 0])
 param_name = ["height", "velocity"]
 set_param = [30, 0.05]
 test_param_name = {"test_param": "velocity", "hold_param": "height"}
-v_orig = np.arange(1, 171, 1) * 0.001
+v_orig = np.arange(124, 171, 1) * 0.001
 h = h_orig
 # # calculate the number of search
 # Num_search1 = af.compute_Nsearch(std_param[0], step_orig[0])
@@ -43,7 +44,7 @@ for i in range(len(v_orig)):
     print("v = ", v)
     iteration = 0
     success = 0
-    est = np.zeros((1000, 2))
+    est = np.zeros((1000, 1))
     while iteration < 1000:
         # simulate baseline
         normal_baseline = np.random.normal(size=(1, Nifg)) * 333
@@ -78,20 +79,20 @@ for i in range(len(v_orig)):
             count += 1
         if abs(est_param["velocity"] - v) < 0.0005:
             success += 1
-        est[iteration, 0] = est_param["height"]
-        est[iteration, 1] = est_param["velocity"]
+
+        est[iteration, 0] = est_param["velocity"]
         iteration += 1
         # else:
         # print(est_param)
-    with open("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/V_test_dt_1.csv", "a") as f:
+    with open("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/V_erro_solution.csv", "a") as f:
         # 按列追加保存
         np.savetxt(f, est, delimiter=",")
     # success rate
     # print(success / iteration)
     print(success / iteration)
     success_rate[i] = success / iteration
-np.savetxt("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/Vsuccess_test_dt_1.csv", success_rate)
+np.savetxt("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/Vsuccess_erro_solution.csv", success_rate)
 T2 = time.perf_counter()
 print("程序运行时间:%s秒" % (T2 - T1))
 # dp.bar_plot(v_orig * 1000, success_rate, "Nifg=10,SNR=70db,dt=12", "snr_v_test5", 0.001 * 1000, "v[mm/year]")
-dp.line_plot(v_orig * 1000, success_rate, "n=20deg,dt=36,nifg=30", "V_test_dt_1", "v[mm/year]")
+dp.line_plot(v_orig * 1000, success_rate, "n=1deg,dt=36,nifg=30", "V_erro_solution", "v[mm/year]")

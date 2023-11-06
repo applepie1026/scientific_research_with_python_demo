@@ -56,6 +56,30 @@ def line_plot(x, y, title, name, x_name):
     plt.savefig(os.path.join(figure_save_path, name))
 
 
+def line_plot_flex_point(x, y, title, name, x_name):
+    # 折线图
+    plt.figure()
+    # plt.rc("font", family="FangSong")
+    plt.plot(x, y, linestyle="-")
+    plt.title("Line", fontsize=16)
+    plt.xlabel(x_name, fontsize=14)
+    plt.ylabel("v[mm/year]", fontsize=14)
+    plt.ylim(0, 170)
+    # plt.xticks(x)
+    # plt.xticks(np.linspace(0.001, 0.2, 5) * 1000)
+    # plt.xticks([10, 30, 50, 70, 90, 110])
+    plt.title(title, fontsize=20, y=1.05)
+    ax = plt.gca()
+    # 坐标轴的边框（脊梁）去掉边框
+    ax.spines["right"].set_color("none")
+    ax.spines["top"].set_color("none")
+    ax.xaxis.set_major_formatter(plt.FormatStrFormatter("%.2f"))
+    figure_save_path = "/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/plot"
+    if not os.path.exists(figure_save_path):
+        os.makedirs(figure_save_path)
+    plt.savefig(os.path.join(figure_save_path, name))
+
+
 def scatter_plot(est, desired, x_name, y_name, x_ax, tile, name):
     # 散点图
     plt.figure()

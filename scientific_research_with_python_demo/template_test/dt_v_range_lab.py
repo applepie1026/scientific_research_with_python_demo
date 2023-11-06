@@ -23,12 +23,12 @@ param_orig = np.array([0, 0])
 param_name = ["height", "velocity"]
 set_param = [30, 0.05]
 test_param_name = {"test_param": "velocity", "hold_param": "height"}
-success_rate = np.zeros((90 * 170, 3))
+success_rate = np.zeros((81 * 170, 3))
 r = 0
 for j in range(len(dt_range)):
     dt = dt_range[j]
     print("dt = ", dt_range[j])
-    v_orig = np.arange(1, 171, 1) * 0.001
+    v_orig = np.arange(1, 341, 1) * 0.0005
     std_param = np.array([40, 0.08])
     # calculate the number of search
     Num_search1_max = 120
@@ -93,7 +93,7 @@ for j in range(len(dt_range)):
         r += 1
 
 
-np.savetxt("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/dT_Vsuccess_lab%s_1.csv" % j, success_rate, delimiter=",")
+np.savetxt("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/dT_Vsuccess_lab%s_2.csv" % j, success_rate, delimiter=",")
 print("success_rate_save !")
 # dp.line_plot(v_orig * 1000, success_rate, "n=10deg,dt=%s,nifg=30" % (dt_range[j] * 12), "dT_lab%d_1" % j, "v[mm/year]")
 # print("data_plot_save !")

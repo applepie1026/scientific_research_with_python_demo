@@ -87,12 +87,12 @@ for j in range(len(dt_range)):
         #     # 按列追加保存
         #     np.savetxt(f, est, delimiter=",")
         # success rate
-        print(success / iteration)
+        # print(success / iteration)
         success_rate[i] = success / iteration
-    np.savetxt("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/dTsuccess_lab%s_1.csv" % j, success_rate)
+    np.savetxt("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/dTsuccess_lab%s_2.csv" % j, success_rate)
     print("success_rate_save !")
     T2 = time.perf_counter()
 
-    dp.line_plot(v_orig * 1000, success_rate, "n=10deg,dt=%s,nifg=30" % (dt_range[j] * 12), "dT_lab%d_1" % j, "v[mm/year]")
+    dp.line_plot(v_orig * 1000, success_rate, "n=10dB,dt=%s,nifg=30" % (dt_range[j] * 12), "dT_lab%d_2" % j, "v[mm/year]")
     print("data_plot_save !")
 print("程序运行时间:%s秒" % (T2 - T1))

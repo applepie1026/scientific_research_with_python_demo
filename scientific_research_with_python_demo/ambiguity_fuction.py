@@ -36,9 +36,8 @@ class Periodogram_estimation:
         """
         param = deepcopy(param_file)
         self.Nifg = param["Nifg"]
-        self.v_orig = param["v_orig"]
-        self.h_orig = param["h_orig"]
-        self.SNR = param["SNR"]
+        self.param_sim = param["param_simulation"]
+        self.noise_level = param["noise_level"]
         self.step_orig = param["step_orig"]
         self.std_param = param["std_param"]
         self.param_orig = param["param_orig"]
@@ -76,6 +75,17 @@ class Periodogram_estimation:
         h2ph = (m2ph * self.normal_baseline / (R * np.sin(Incidence_angle))).T
         return h2ph
 
+    def par2ph(self):
+        """compute arc phase based on input parameters
+
+        Returns:
+            _array_: arc phase based on input parameters
+        """
+        par2ph = dict()
+        par2ph["velocity"] = self.v2ph()
+        par2ph["height"] = self.h2ph()
+        self._par2ph = par2ph
+
     @staticmethod
     def wrap_phase(phase):
         """wrap phase to [-pi,pi]
@@ -89,7 +99,7 @@ class Periodogram_estimation:
         return np.mod(phase + np.pi, 2 * np.pi) - np.pi
 
     @staticmethod
-    def _add_gaussian_noise(signal, SNR):
+    def _add_gaussian_noise(Nifg, noise_level_set):
         """construct gaussian noise based on signal and SNR
 
         Args:
@@ -104,13 +114,19 @@ class Periodogram_estimation:
         :param SNR: 添加噪声的信噪比
         :return: 生成的噪声
         """
-        noise = np.random.randn(*signal.shape)  # *signal.shape 获取样本序列的尺寸
-        noise = noise - np.mean(noise)
-        signal_power = (1 / signal.shape[0]) * np.sum(np.power(signal, 2))
-        noise_variance = signal_power / np.power(10, (SNR / 10))
-        noise = (np.sqrt(noise_variance) / np.std(noise)) * noise
+        noise_std = np.zeros((1, Nifg + 1))
+        noise_level = np.zeros((Nifg + 1, 1))
+        noise_level[0] = np.pi * noise_level_set / 180
+        noise_std[0][0] = np.random.randn(1) * noise_level[0]
 
-        return noise
+        for v in range(Nifg):
+            noise_level[v + 1] = (np.pi * noise_level_set / 180) + np.random.randn(1) * (np.pi * 5 / 180)
+            noise_std[0][v + 1] = np.random.randn(1) * noise_level[v + 1]
+        noise_phase = np.zeros((Nifg, 1))
+        for i in range(Nifg):
+            noise_phase[i] = noise_std[0][i] + noise_std[0][i + 1]
+
+        return noise_phase
 
     @staticmethod
     def _check_snr(signal, noise):
@@ -137,12 +153,16 @@ class Periodogram_estimation:
             arc_phase (array): observed arc phase based on interferograms
         """
         # factors of parameters to  arc phase
-        self._h2ph = self.h2ph()
-        self._v2ph = self.v2ph()
+        # self._h2ph = self.h2ph()
+        # self._v2ph = self.v2ph()
+        self.par2ph()
+        phase_unwrap = np.zeros((self.Nifg, 1))
+        for key in self.param_name:
+            phase_unwrap += self._par2ph[key] * self.param_sim[key]
         # simulate true arc phase without phase ambiguities
-        self._phase_unwrap = self._v2ph * self.v_orig + self._h2ph * self.h_orig
+        self._phase_unwrap = phase_unwrap
         # generate gaussian noise of the 'Nifgs' arc phases based on SNR
-        noise = Periodogram_estimation._add_gaussian_noise(self._phase_unwrap, self.SNR)
+        noise = Periodogram_estimation._add_gaussian_noise(self.Nifg, self.noise_level)
         phase_true = self._phase_unwrap + noise
         # wrap phase to [-pi,pi] as the observation arc phase
         self.arc_phase = Periodogram_estimation.wrap_phase(phase_true)
@@ -210,18 +230,21 @@ class Periodogram_estimation:
         self.searched_param = self._construct_parameter_space()
 
         # construct searched phase space
-        searched_phase["height"] = self.searched_param["height"] * self._h2ph
-        searched_phase["velocity"] = self.searched_param["velocity"] * self._v2ph
-        # shape searched space by kronecker product
+        for key in self.param_name:
+            searched_phase[key] = self.searched_param[key] * self._par2ph[key]
 
-        self._searched_space = np.kron(searched_phase["velocity"], np.ones((1, self.searched_param["height"].size))) + np.kron(
-            np.ones((1, self.searched_param["velocity"].size)), searched_phase["height"]
-        )
-        # search_space = np.kron(search_phase1, np.ones((1, num_serach[0]))) + np.kron(np.ones((1, num_serach[1])), search_phase2)
-        self._searched_phase_size = [
-            self.searched_param["height"].size,
-            self.searched_param["velocity"].size,
-        ]
+        # shape searched space by kronecker product
+        if len(self.param_name) <= 1:
+            self._searched_space = searched_phase[self.param_name[0]]
+        else:
+            self._searched_space = np.kron(searched_phase["velocity"], np.ones((1, self.searched_param["height"].size))) + np.kron(
+                np.ones((1, self.searched_param["velocity"].size)), searched_phase["height"]
+            )
+            # search_space = np.kron(search_phase1, np.ones((1, num_serach[0]))) + np.kron(np.ones((1, num_serach[1])), search_phase2)
+            self._searched_phase_size = [
+                self.searched_param["height"].size,
+                self.searched_param["velocity"].size,
+            ]
 
     def compute_temporal_coherence(self):
         """compute temporal coherence based on searched phase space and observed arc phase per (v,h) pair
@@ -257,8 +280,11 @@ class Periodogram_estimation:
             best_index (array): the index of the best coh_t per (v,h) pair in the searched space
         """
 
-        self._best_index = np.argmax(np.abs(self.coh_t))
-        self._param_index = np.unravel_index(self._best_index, self._searched_phase_size, order="F")
+        best_index = np.argmax(np.abs(self.coh_t))
+        if len(self.param_name) <= 1:
+            self._param_index = [best_index]
+        else:
+            self._param_index = np.unravel_index(best_index, self._searched_phase_size, order="F")
 
     def compute_param(self):
         """compute the best paramters (v,h) based on the index of the best coh_t per (v,h) pair in the searched space
@@ -324,17 +350,24 @@ def compute_success_rate(param_file):
 
     iteration = 0
     success_count = 0
-    estimated_param = np.zeros((100, 2))
-    while iteration < 100:
+    estimated_param = np.zeros((1000, len(param_file["param_name"])))
+    while iteration < 1000:
         est = Periodogram_estimation(param_file)
         # simulate arc phase ,the normal baseline and the noise phase are randomly generated
         est.simulate_arc_phase()
         est.searching_loop()
-        estimated_param[iteration] = list(est._param.values())
-        # print(est._param)
-        if abs(est._param["height"] - est.h_orig) < 0.05 and abs(est._param["velocity"] - est.v_orig) < 0.00005:
-            success_count += 1
 
+        # print(est._param)
+        if len(param_file["param_name"]) <= 1:
+            estimated_param[iteration] = est._param[param_file["param_name"][0]]
+            if abs(est._param["height"] - est.param_sim["height"]) < 0.5 or abs(est._param["velocity"] - est.param_sim["velocity"]) < 0.0005:
+                success_count += 1
+                # print(est._param)
+        else:
+            if abs(est._param["height"] - est.param_sim["height"]) < 0.5 and abs(est._param["velocity"] - est.param_sim["velocity"]) < 0.0005:
+                estimated_param[iteration] = list(est._param.values())
+                success_count += 1
+                # print(est._param)
         iteration += 1
         del est
     # with open("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/"
@@ -344,37 +377,17 @@ def compute_success_rate(param_file):
     #      "a") as f:
     # # 按列追加保存
     #     np.savetxt(f, estimated_param, delimiter=",")
-    return success_count / 100
+    return success_count / 1000
 
 
-def param_experiment(param_name, param_range, param_file):
-    """parameter experiments based on periodogram method
-        we can set different initial parameters such as Nifgs,v,h, revist cycle,search bounds
-        and their range to do the experiments
-    Parameters
-    ----------
-    param_name : _str_
-        name of the parameters to be estimated
-    param_range : _array_
-        the range of the parameters to be estimated based on a fixed step
-        such as np.arange(10,101,1) for Nifgs
-    param_file : _dict_
-        input parameters for the simulation and estimation
-
-    Returns
-    -------
-    _array_
-        success rate we get from experiments
-    """
-    success_rate = np.zeros(len(param_range))
-    for i in range(len(param_range)):
-        param_file[param_name] = param_range[i]
-        print(param_name, "=", param_range[i])
-        success_rate[i] = compute_success_rate(param_file)
-        print(success_rate[i])
-
-    np.savetxt(
-        "/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/" + param_file["file_name"] + "success_rate" + ".csv", success_rate
-    )
+def param_experiment_v(test_param_name, test_param_range, v_range, param_file, save_name):
+    for i in range(len(test_param_range)):
+        success_rate = np.zeros([1, v_range])
+        param_file["test_param_name"] = test_param_range[i]
+        print("%d = %s " % test_param_name, test_param_range[i])
+        for j in range(len(v_range)):
+            param_file["param_simulation"]["velocity"] = v_range[j]
+            success_rate[0][j] = compute_success_rate(param_file)
+    np.savetxt("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/" + save_name + "success_rate" + ".csv", success_rate)
 
     return success_rate

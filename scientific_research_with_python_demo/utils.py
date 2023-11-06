@@ -155,7 +155,7 @@ def sim_arc_phase_lab3(v: float, h: float, v2ph, h2ph: float, SNR) -> np.ndarray
     h_phase = _coef2phase(h2ph, h)
     phase_unwrap = v_phase
     # noise = add_gaussian_noise(phase_unwrap, SNR)
-    noise = add_gaussian_noise2(len(phase_unwrap), SNR)
+    noise = addictive_gaussian_noise(phase_unwrap, SNR)
     phase_true = phase_unwrap + noise
     arc_phase = wrap_phase(phase_true)
     # snr_check = check_snr(phase_unwrap, phase_true)
@@ -341,34 +341,10 @@ def add_gaussian_noise2(nifg, noise_level_set):
     return noise_phase
 
 
-def add_gaussian_noise3(nifg, noise_level_set):
-    noise_std = np.zeros((nifg + 1, 1, 2))
-    noise_level = np.zeros((nifg + 1, 1))
-    noise_level[0] = np.pi * noise_level_set / 180
-    noise_std[0, ::] = np.random.randn(2) * noise_level[0]
+def addictive_gaussian_noise(signal, SNR):
+    noise_std = np.power(10, SNR / (-20)) / np.sqrt(2)
+    noise_phase = np.random.normal(0, noise_std, signal.shape)
 
-    for v in range(nifg):
-        noise_level[v + 1] = (np.pi * noise_level_set / 180) + np.random.randn(1) * (np.pi * 5 / 180)
-        noise_std[v + 1, ::] = np.random.randn(2) * noise_level[v + 1]
-    noise_phase = np.zeros((nifg, 1))
-    for i in range(nifg):
-        noise_phase[i] = noise_std[i, :, 0] + noise_std[i + 1, :, 0] - noise_std[i, :, 1] - noise_std[i + 1, :, 1]
-
-    return noise_phase
-
-
-def add_gaussian_noise4(nifg, noise_level_set):
-    noise_std = np.zeros((1, nifg + 1))
-    noise_level = np.zeros((nifg + 1, 1))
-    noise_level[0] = np.pi * noise_level_set / 180
-    noise_std[0][0] = np.random.randn(1) * noise_level[0]
-
-    for v in range(nifg):
-        noise_level[v + 1] = np.pi * noise_level_set / 180 + np.random.randn(1) * (np.pi * 5 / 180)
-        noise_std[0][v + 1] = np.random.randn(1) * noise_level[v + 1]
-    noise_phase = np.zeros((nifg, 1))
-    for i in range(nifg):
-        noise_phase[i] = (noise_std[0][i] + noise_std[0][i + 1]) / 2
     return noise_phase
 
 

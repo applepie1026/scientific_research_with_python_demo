@@ -13,9 +13,9 @@ T1 = time.perf_counter()
 # ------------------------------------------------
 WAVELENGTH = 0.056  # [unit:m]
 Nifg = 30
-v_orig = 0.15  # [mm/year] 减少v，也可以改善估计结果，相当于减少了重访周期
+v_orig = 0.0015  # [mm/year] 减少v，也可以改善估计结果，相当于减少了重访周期
 h_orig = 30  # [m]，整数 30 循环迭代搜索结果有问题
-noise_level = 10
+noise_level = 20
 # noise_level = np.pi * 30 / 180
 # noise_phase = af.sim_phase_noise(noise_level, Nifg)
 step_orig = np.array([1, 0.0001])
@@ -39,7 +39,7 @@ time_baseline = np.arange(1, Nifg + 1, 1).reshape(1, Nifg) * 3
 # print("dt:", dt)
 # std_param = {"height": 40, "velocity": 0.1}
 
-while iteration < 1000:
+while iteration < 100:
     # simulate baseline
     normal_baseline = np.random.normal(0, 333, size=(1, Nifg))
     # print(normal_baseline)
@@ -83,18 +83,18 @@ while iteration < 1000:
             # update the step
             data_set[key]["step_orig"] *= 0.1
             # update the number of search
-            data_set[key]["Num_search_max"] = 10
-            data_set[key]["Num_search_min"] = 10
+            data_set[key]["Num_search_max"] = 100
+            data_set[key]["Num_search_min"] = 100
         count += 1
     print(est_param)
-    if abs(est_param["height"] - h_orig) < 0.1 and abs(est_param["velocity"] - v_orig) < 0.0005:
+    if abs(est_param["height"] - h_orig) < 0.1 and abs(est_param["velocity"] - v_orig) < 0.00005:
         success += 1
         # print(est_param)
     est_velocity[iteration] = est_param["velocity"]
     iteration += 1
     # else:
 # success rate
-print(success / 1000)
+print(success / 100)
 # print(est_param)
 # print(est_velocity)
 # np.savetxt("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/est_velocity.csv", est_velocity, delimiter=",")

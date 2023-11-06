@@ -14,7 +14,8 @@ WAVELENGTH = 0.056  # [unit:m]
 Nifg = 30
 h_orig = 30  # [m]，整数 30 循环迭代搜索结果有问题
 # noise_level = [5, 10, 20, 30, 40, 50]
-noise_level = [1, 5, 10, 20, 30, 40]
+# noise_level = [0, 1, 3, 5, 10, 20, 30]  # db
+noise_level = [20]
 # noise_phase = af.sim_phase_noise(noise_level, Nifg)
 step_orig = np.array([1.0, 0.0001])
 # std_param = np.array([40, 0.06])
@@ -23,8 +24,8 @@ param_name = ["height", "velocity"]
 set_param = [30, 0.05]
 test_param_name = {"test_param": "velocity", "hold_param": "height"}
 for j in range(len(noise_level)):
-    print("noise_level = ", noise_level[j])
-    v_orig = np.arange(1, 171, 1) * 0.001
+    print("noise_level = %s dB" % noise_level[j])
+    v_orig = np.arange(1, 341, 1) * 0.0005
     h = h_orig
     std_param = np.array([40, 0.08])
     # calculate the number of search
@@ -42,7 +43,7 @@ for j in range(len(noise_level)):
         # print("v = ", v)
         iteration = 0
         success = 0
-        est = np.zeros((1000, 2))
+        est = np.zeros((1000, 1))
         while iteration < 1000:
             # simulate baseline
             normal_baseline = np.random.normal(size=(1, Nifg)) * 333
@@ -73,24 +74,23 @@ for j in range(len(noise_level)):
                     data_set[key]["Num_search_min"] = 10
 
                 count += 1
-            if abs(est_param["velocity"] - v) < 0.0005:
+            if abs(est_param["velocity"] - v) < 0.00005:
                 success += 1
-            est[iteration, 0] = est_param["height"]
-            est[iteration, 1] = est_param["velocity"]
+            est[iteration, 0] = est_param["velocity"]
             iteration += 1
             # else:
             # print(est_param)
-        with open("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/V_test_%s_2.csv" % j, "a") as f:
+        with open("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/V_test_%s_5.csv" % j, "a") as f:
             # 按列追加保存
             np.savetxt(f, est, delimiter=",")
         # success rate
         # print(success / iteration)
         success_rate[i] = success / iteration
-    np.savetxt("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/Vsuccess_test%s_2.csv" % j, success_rate)
+    np.savetxt("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/Vsuccess_test%s_5.csv" % j, success_rate)
     print("success_rate_save !")
     T2 = time.perf_counter()
 
     # dp.bar_plot(v_orig * 1000, success_rate, "Nifg=10,SNR=70db,dt=12", "snr_v_test5", 0.001 * 1000, "v[mm/year]")
-    dp.line_plot(v_orig * 1000, success_rate, "n=%ddeg,dt=36,nifg=30" % noise_level[j], "V_test%s_2" % j, "v[mm/year]")
+    dp.line_plot(v_orig * 1000, success_rate, "n=%ddB,dt=36,nifg=30" % noise_level[j], "V_test%s_5" % j, "v[mm/year]")
     print("data_plot_save !")
 print("程序运行时间:%s秒" % (T2 - T1))
