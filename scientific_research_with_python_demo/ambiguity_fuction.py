@@ -40,7 +40,6 @@ class Periodogram_estimation:
         self.noise_level = param["noise_level"]
         self.step_orig = param["step_orig"]
         self.std_param = param["std_param"]
-        self.param_orig = param["param_orig"]
         self.param_name = param["param_name"]
         self.Num_search_min = param["Num_search_min"]
         self.Num_search_max = param["Num_search_max"]
@@ -328,18 +327,62 @@ class Periodogram_estimation:
 
         """
         count = 0
-        while count <= 10 and self.step_orig["velocity"] >= 1.0e-8 and self.step_orig["height"] >= 1.0e-4:
+        for count in range(1):
+            # and self.step_orig["velocity"] >= 1.0e-8 and self.step_orig["height"] >= 1.0e-4
             self._periodogram_estimation()
 
             for key in self.param_name:
                 self.step_orig[key] = self.step_orig[key] * 0.1
                 self.Num_search_min[key] = 10
                 self.Num_search_max[key] = 10
-
             count += 1
 
 
-def compute_success_rate(param_file):
+def compute_success_rate1(param_file, save_path, check_times=1000):
+    """compute the success rate of the parameter estimation based on periodogram method by run the process 100 times
+        the acceptable estimation error is set as 0.05 for height and 0.00005 for velocity
+    Parameters
+    ----------
+    param_file : _dict_
+        input parameters for the simulation and estimation
+    """
+
+    success_count = 0
+    estimated_param_true = np.array([])
+    estimated_param_error = np.array([])
+    for i in range(check_times):
+        est = Periodogram_estimation(param_file)
+        # simulate arc phase ,the normal baseline and the noise phase are randomly generated
+        est.simulate_arc_phase()
+        est.searching_loop()
+
+        # print(est._param)
+        if len(param_file["param_name"]) <= 1:
+            if abs(est._param["height"] - est.param_sim["height"]) < 0.5 or abs(est._param["velocity"] - est.param_sim["velocity"]) < 0.0005:
+                success_count += 1
+                estimated_param_true = np.append(estimated_param_true, est._param[param_file["param_name"][0]])
+            else:
+                estimated_param_error = np.append(estimated_param_error, est._param[param_file["param_name"][0]])
+                # print(est._param)
+        else:
+            if abs(est._param["height"] - est.param_sim["height"]) < 0.5 and abs(est._param["velocity"] - est.param_sim["velocity"]) < 0.0005:
+                estimated_param_true = np.append(estimated_param_true, list(est._param.values()))
+                success_count += 1
+                # print(est._param)
+
+        del est
+    # with open(save_path[0], "a") as f:
+    #     # 按列追加保存
+    #     np.savetxt(f, estimated_param_true.T, delimiter=",")
+
+    # with open(save_path[1], "a") as f:
+    #     # 按列追加保存
+    #     np.savetxt(f, estimated_param_error.T, delimiter=",")
+
+    return success_count / check_times, estimated_param_true, estimated_param_error
+
+
+def compute_success_rate2(param_file, check_times=1000):
     """compute the success rate of the parameter estimation based on periodogram method by run the process 100 times
         the acceptable estimation error is set as 0.05 for height and 0.00005 for velocity
     Parameters
@@ -350,8 +393,8 @@ def compute_success_rate(param_file):
 
     iteration = 0
     success_count = 0
-    estimated_param = np.zeros((1000, len(param_file["param_name"])))
-    while iteration < 1000:
+    # estimated_param = np.zeros((check_times, len(param_file["param_name"])))
+    for i in range(check_times):
         est = Periodogram_estimation(param_file)
         # simulate arc phase ,the normal baseline and the noise phase are randomly generated
         est.simulate_arc_phase()
@@ -359,35 +402,145 @@ def compute_success_rate(param_file):
 
         # print(est._param)
         if len(param_file["param_name"]) <= 1:
-            estimated_param[iteration] = est._param[param_file["param_name"][0]]
+            # estimated_param[iteration] = est._param[param_file["param_name"][0]]
             if abs(est._param["height"] - est.param_sim["height"]) < 0.5 or abs(est._param["velocity"] - est.param_sim["velocity"]) < 0.0005:
                 success_count += 1
-                # print(est._param)
         else:
             if abs(est._param["height"] - est.param_sim["height"]) < 0.5 and abs(est._param["velocity"] - est.param_sim["velocity"]) < 0.0005:
-                estimated_param[iteration] = list(est._param.values())
+                # estimated_param[iteration] = list(est._param.values())
                 success_count += 1
                 # print(est._param)
-        iteration += 1
+
         del est
-    # with open("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/"
-    #     + param_file["file_name"]
-    #     + "est_param"
-    #     + ".csv",
-    #      "a") as f:
-    # # 按列追加保存
-    #     np.savetxt(f, estimated_param, delimiter=",")
-    return success_count / 1000
+
+    return success_count / check_times
 
 
-def param_experiment_v(test_param_name, test_param_range, v_range, param_file, save_name):
+def compute_success_rate3(param_file, check_times=1000):
+    """compute the success rate of the parameter estimation based on periodogram method by run the process 100 times
+        the acceptable estimation error is set as 0.05 for height and 0.00005 for velocity
+    Parameters
+    ----------
+    param_file : _dict_
+        input parameters for the simulation and estimation
+    """
+
+    success_count = 0
+    # estimated_param = np.zeros((500, len(param_file["param_name"])))
+    for i in range(check_times):
+        est = Periodogram_estimation(param_file)
+        # simulate arc phase ,the normal baseline and the noise phase are randomly generated
+        est.simulate_arc_phase()
+        est.searching_loop()
+
+        # print(est._param)
+        if len(param_file["param_name"]) <= 1:
+            # estimated_param[i] = est._param[param_file["param_name"][0]]
+            if abs(est._param["height"] - est.param_sim["height"]) < 0.5 or abs(est._param["velocity"] - est.param_sim["velocity"]) < 0.0005:
+                success_count += 1
+        else:
+            if abs(est._param["height"] - est.param_sim["height"]) < 0.5 and abs(est._param["velocity"] - est.param_sim["velocity"]) < 0.0005:
+                # estimated_param[i] = list(est._param.values())
+                success_count += 1
+                # print(est._param)
+
+        del est
+
+    return success_count / check_times
+
+
+def param_experiment_v(test_param_name, test_param_range, v_range, param_file, save_name, check_times, shared_dict=None, flag=1, multiple=1, process_num=0):
+    save_path = [
+        "/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/" + save_name + "_true_data" + ".csv",
+        "/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/" + save_name + "_error_data" + ".csv",
+    ]
     for i in range(len(test_param_range)):
-        success_rate = np.zeros([1, v_range])
-        param_file["test_param_name"] = test_param_range[i]
-        print("%d = %s " % test_param_name, test_param_range[i])
+        success_rate = np.zeros(len(v_range))
+        param_file[test_param_name] = test_param_range[i]
+        # print(f"{test_param_name} = {test_param_range[i]}")
         for j in range(len(v_range)):
             param_file["param_simulation"]["velocity"] = v_range[j]
-            success_rate[0][j] = compute_success_rate(param_file)
-    np.savetxt("/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/" + save_name + "success_rate" + ".csv", success_rate)
+            if flag == 0:
+                success_rate[j] = compute_success_rate1(param_file, save_path, check_times)[0]
+            elif flag == 1:
+                success_rate[j] = compute_success_rate2(param_file, check_times)
+        if multiple == 0:
+            np.savetxt(
+                "/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/" + save_name + "success_rate" + ".csv", success_rate
+            )
+        elif multiple == 1:
+            shared_dict.update({process_num: success_rate})
+    print("success_rate_save !")
 
     return success_rate
+
+
+def param_experiment_v_h(test_param_name, test_param_range, v_range, h_range, param_file, save_name, check_times, shared_dict=None, flag=1, multiple=1, process_num=0):
+    save_path = [
+        "/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/" + save_name + "_true_data" + ".csv",
+        "/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/" + save_name + "_error_data" + ".csv",
+    ]
+    for i in range(len(test_param_range)):
+        success_rate = np.zeros(len(v_range))
+        param_file[test_param_name] = test_param_range[i]
+        # print(f"{test_param_name} = {test_param_range[i]}")
+        param_file["param_simulation"]["height"] = h_range
+        for j in range(len(v_range)):
+            param_file["param_simulation"]["velocity"] = v_range[j]
+            if flag == 0:
+                success_rate[j] = compute_success_rate1(param_file, save_path, check_times)
+            elif flag == 1:
+                success_rate[j] = compute_success_rate3(param_file, check_times)
+        if multiple == 0:
+            np.savetxt("data_save/" + save_name + "success_rate" + ".txt", success_rate)
+            return success_rate
+        elif multiple == 1:
+            shared_dict.update({process_num: success_rate})
+    print("success_rate_save !")
+
+
+def param_experiment_v_data(test_param_name, test_param_range, v_range, param_file, save_name, check_times, shared_dict=None, multiple=1, process_num=0):
+    save_path = [
+        "/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/" + save_name + "_true_data" + ".csv",
+        "/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/" + save_name + "_error_data" + ".csv",
+    ]
+    for i in range(len(test_param_range)):
+        success_rate = np.zeros(len(v_range))
+        param_file[test_param_name] = test_param_range[i]
+        # print(f"{test_param_name} = {test_param_range[i]}")
+        true_data_list = []
+        error_data_list = []
+        for j in range(len(v_range)):
+            param_file["param_simulation"]["velocity"] = v_range[j]
+            success_rate[j], estimated_param_true, estimated_param_error = compute_success_rate1(param_file, save_path, check_times)
+            true_data_list.append(estimated_param_true)
+            error_data_list.append(estimated_param_error)
+        true_data = np.concatenate(true_data_list, axis=0)
+        error_data = np.concatenate(error_data_list, axis=0)
+        if multiple == 1:
+            shared_dict.update({process_num: {0: true_data, 1: error_data}})
+    print("success_rate_save !")
+
+
+def data_collect(data, data_length, process_num_all, test_length):
+    collected_data = np.zeros((test_length, data_length))
+    for j in range(test_length):
+        # 将process_num_all个数组合并
+        data_list = []
+        for i in range(process_num_all):
+            data_list.append(data[f"{j}"][i])
+        collected_data[j, :] = np.concatenate(data_list, axis=0)
+    return collected_data
+
+
+def est_data_collect(data, process_num_all):
+    true_data_list = []
+    error_data_list = []
+
+    for i in range(process_num_all):
+        true_data_list.append(data["data_est"][i][0])
+        error_data_list.append(data["data_est"][i][1])
+    true_data = np.concatenate(true_data_list, axis=0)
+    error_data = np.concatenate(error_data_list, axis=0)
+
+    return true_data, error_data

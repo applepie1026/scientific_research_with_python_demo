@@ -1,15 +1,15 @@
 {"Nifg": 30, 
 "param_simulation": {"height":10,"velocity":0.005},
-"noise_level": 1, 
+"noise_level": 5, 
 "step_orig": {"height":1,"velocity":0.0001}, 
 "std_param": 1, 
 "param_orig": {"height":0,"velocity":0},
 "param_name": ["velocity"], 
-"Num_search_min": {"height":120,"velocity":1600}, 
-"Num_search_max": {"height":120,"velocity":1600}, 
+"Num_search_min": {"height":60,"velocity":1600}, 
+"Num_search_max": {"height":60,"velocity":1600}, 
 "revisit_cycle": 36,
 "normal_baseline": [[ 201.03732675,  312.79584868 , 252.20279891,  -59.12524805 , 505.53385018,
 -327.52419321, -117.61796235, -595.64735705, -241.82233641  ,-46.29151213]],
 "Bn":333,
-"file_name":"test"
+"file_name":"test3"
 }

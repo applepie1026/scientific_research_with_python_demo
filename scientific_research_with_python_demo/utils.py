@@ -112,6 +112,43 @@ def sim_arc_phase(v: float, h: float, v2ph, h2ph: float, SNR) -> np.ndarray:
     return arc_phase, snr_check, phase_unwrap, h_phase, v_phase
 
 
+def sim_arc_phase_ils(phase_unwrap, SNR) -> np.ndarray:
+    """simulate phase of arc between two points based on a module(topographic_height + linear_deformation)
+
+    Parameters
+    ----------
+    v : float
+        defomation rate per year
+    h : float
+        topographic height per arc
+    noise_level : float
+        level of uniform noise
+    v2ph : _type_
+        velocity-to-phase conversion factor
+    h2ph : float
+        height-to-phase conversion factor
+
+    Returns
+    -------
+    np.ndarray:
+        simulated observation phases = topographic_phase + deformation_phase + nosie
+    """
+    # v_phase = v2phase(v, time_range)[0]
+    # h_phase = h2phase(h, normal_baseline)[0]
+    # v2ph = v2phase(v, time_range)[1]
+    # h2ph = h2phase(h, normal_baseline)[0]
+    # v_phase = _coef2phase(v2ph, v)
+    # h_phase = _coef2phase(h2ph, h)
+
+    # noise = add_gaussian_noise(phase_unwrap, SNR)
+    noise = add_gaussian_noise2(len(phase_unwrap), SNR)
+    phase_true = phase_unwrap + noise
+    arc_phase = wrap_phase(phase_true)
+    # snr_check = check_snr(phase_unwrap, phase_true)
+    snr_check = check_snr2(phase_unwrap, noise)
+    return arc_phase, snr_check
+
+
 def sim_arc_phase_lab(v: float, h: float, v2ph, h2ph: float, SNR) -> np.ndarray:
     # v_phase = v2phase(v, time_range)[0]
     # h_phase = h2phase(h, normal_baseline)[0]
@@ -119,9 +156,10 @@ def sim_arc_phase_lab(v: float, h: float, v2ph, h2ph: float, SNR) -> np.ndarray:
     # h2ph = h2phase(h, normal_baseline)[0]
     v_phase = _coef2phase(v2ph, v)
     h_phase = _coef2phase(h2ph, h)
+    print(h_phase)
     phase_unwrap = v_phase + h_phase
     # noise = add_gaussian_noise(phase_unwrap, SNR)
-    noise = add_gaussian_noise2(len(phase_unwrap), SNR)
+    noise = addictive_gaussian_noise(phase_unwrap, SNR)
     phase_true = phase_unwrap + noise
     arc_phase = wrap_phase(phase_true)
     # snr_check = check_snr(phase_unwrap, phase_true)
@@ -194,10 +232,9 @@ def v_coef(time_baseline) -> np.ndarray:
         v to phase factors
     """
 
-    temporal_step = 12  # [unit:d]
-    temporal_samples = temporal_step * time_baseline
+    # temporal_step = 12  # [unit:d]
     # distance = velocity * days (convert from d to yr because velocity is in m/yr)
-    v2phase_coefficeint = temporal_samples / 365
+    v2phase_coefficeint = time_baseline / 365
 
     return v2phase_coefficeint
 
