@@ -47,6 +47,8 @@ class Periodogram_estimation:
         # self.normal_baseline = np.array(param_file['normal_baseline'])
         self.Bn = param["Bn"]
         self.normal_baseline = np.random.randn(1, self.Nifg) * self.Bn
+        # self.normal_baseline = (np.random.normal(0, 50, self.Nifg) + np.arange(10, 310, 10)).reshape(1, self.Nifg)
+        # np.random.normal(0, 5, self.Nifg) +
         self._param = param["param_orig"]
 
     # @property
@@ -128,6 +130,11 @@ class Periodogram_estimation:
         return noise_phase
 
     @staticmethod
+    def _add_gaussian_noise1(Nifg, noise_level_set):
+        noise_phase = np.random.normal(0, np.pi * noise_level_set / 180, (Nifg, 1))
+        return noise_phase
+
+    @staticmethod
     def _check_snr(signal, noise):
         """_summary_
 
@@ -161,7 +168,7 @@ class Periodogram_estimation:
         # simulate true arc phase without phase ambiguities
         self._phase_unwrap = phase_unwrap
         # generate gaussian noise of the 'Nifgs' arc phases based on SNR
-        noise = Periodogram_estimation._add_gaussian_noise(self.Nifg, self.noise_level)
+        noise = Periodogram_estimation._add_gaussian_noise1(self.Nifg, self.noise_level)
         phase_true = self._phase_unwrap + noise
         # wrap phase to [-pi,pi] as the observation arc phase
         self.arc_phase = Periodogram_estimation.wrap_phase(phase_true)
@@ -426,7 +433,7 @@ def compute_success_rate3(param_file, check_times=1000):
     """
 
     success_count = 0
-    # estimated_param = np.zeros((500, len(param_file["param_name"])))
+    estimated_param = np.zeros((500, len(param_file["param_name"])))
     for i in range(check_times):
         est = Periodogram_estimation(param_file)
         # simulate arc phase ,the normal baseline and the noise phase are randomly generated
@@ -434,6 +441,8 @@ def compute_success_rate3(param_file, check_times=1000):
         est.searching_loop()
 
         # print(est._param)
+        estimated_param[i][0] = est._param["height"]
+        estimated_param[i][1] = est._param["velocity"]
         if len(param_file["param_name"]) <= 1:
             # estimated_param[i] = est._param[param_file["param_name"][0]]
             if abs(est._param["height"] - est.param_sim["height"]) < 0.5 or abs(est._param["velocity"] - est.param_sim["velocity"]) < 0.0005:
@@ -445,7 +454,7 @@ def compute_success_rate3(param_file, check_times=1000):
                 # print(est._param)
 
         del est
-
+    # np.savetxt("scientific_research_with_python_demo/data_save/Bn_data4.txt", estimated_param, delimiter=",")
     return success_count / check_times
 
 
@@ -492,7 +501,7 @@ def param_experiment_v_h(test_param_name, test_param_range, v_range, h_range, pa
             elif flag == 1:
                 success_rate[j] = compute_success_rate3(param_file, check_times)
         if multiple == 0:
-            np.savetxt("data_save/" + save_name + "success_rate" + ".txt", success_rate)
+            # np.savetxt("data_save/" + save_name + "success_rate" + ".txt", success_rate)
             return success_rate
         elif multiple == 1:
             shared_dict.update({process_num: success_rate})
@@ -522,6 +531,30 @@ def param_experiment_v_data(test_param_name, test_param_range, v_range, param_fi
     print("success_rate_save !")
 
 
+def param_experiment_v_data_sigma(test_param_name, test_param_range, v_range, param_file, save_name, check_times, shared_dict=None, multiple=1, process_num=0):
+    save_path = [
+        "/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/" + save_name + "_true_data" + ".csv",
+        "/data/tests/jiaxing/scientific_research_with_python_demo/scientific_research_with_python_demo/data_save/" + save_name + "_error_data" + ".csv",
+    ]
+    data_all = {}
+    for i in range(len(test_param_range)):
+        success_rate = np.zeros(len(v_range))
+        param_file[test_param_name] = test_param_range[i]
+        # print(f"{test_param_name} = {test_param_range[i]}")
+        data_all = {process_num: {}}
+        for j in range(len(v_range)):
+            param_file["param_simulation"]["velocity"] = v_range[j]
+            success_rate[j], estimated_param_true, estimated_param_error = compute_success_rate1(param_file, save_path, check_times)
+            est_data = np.concatenate((estimated_param_true, estimated_param_error), axis=0).reshape(1, check_times)
+            if multiple == 1:
+                k = j + (len(v_range) + 1) * process_num
+                data_all[process_num].update({k: est_data})
+        k = len(v_range) + (len(v_range) + 1) * process_num
+        data_all[process_num].update({k: success_rate})
+        shared_dict.update(data_all)
+    print("success_rate_save !")
+
+
 def data_collect(data, data_length, process_num_all, test_length):
     collected_data = np.zeros((test_length, data_length))
     for j in range(test_length):
@@ -544,3 +577,23 @@ def est_data_collect(data, process_num_all):
     error_data = np.concatenate(error_data_list, axis=0)
 
     return true_data, error_data
+
+
+def est_data_collect_sigma(data, process_num_all, test_length, data_length):
+    # print(data[0][9][179])
+    data_list1 = []
+
+    for k in range(data_length):
+        for i in range(process_num_all):
+            for j in range(test_length):
+                data_list1.append(data[k][i][j + i * (test_length + 1)])
+    data_est = np.concatenate(data_list1, axis=0)
+    success_rate = np.zeros((data_length, test_length * process_num_all))
+    for k in range(data_length):
+        data_list2 = []
+        for i in range(process_num_all):
+            data_list2.append(data[k][i][test_length + (test_length + 1) * i])
+        success_rate_data = np.concatenate(data_list2, axis=0)
+        success_rate[k, :] = success_rate_data
+
+    return data_est, success_rate

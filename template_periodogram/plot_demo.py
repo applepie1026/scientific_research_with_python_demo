@@ -269,3 +269,70 @@ import csv
 
 # plt.title(r"$\Delta{T}$=36days,Nifg=30,h=10m,Noise_level=5deg", fontsize=15)
 # plt.savefig("scientific_research_with_python_demo/plot/afV_H_mutiple_demo2.png")
+
+# sigma_v
+# V_orig = np.arange(1, 121, 1) * 0.001
+# Nifg = np.arange(10, 101, 1)
+# # dT = np.arange(10, 61, 1)
+# # V_orig_dT = np.array([1, 5, 10, 20, 30, 50, 60, 80, 100, 150]) * 0.001
+
+
+def RMSE(data, true_data):
+    return np.sqrt(np.mean((data - true_data) ** 2))
+
+
+def sigma_data(data, true_data, change_data, v_length=170):
+    sigama_v = np.zeros((len(true_data), len(change_data)))
+    for i in range(len(true_data)):
+        for j in range(len(change_data)):
+            sigama_v[i, j] = RMSE(data[i + j * v_length, :], true_data[i])
+
+    return sigama_v
+
+
+# sigma nifg
+data = np.loadtxt("scientific_research_with_python_demo/data_save/data_save1/Nifg_success_rate_2.txt", delimiter=",")
+data1 = np.loadtxt("scientific_research_with_python_demo/data_save/data_save1/Nifg_est_data_2.txt", delimiter=",")
+Nifg = np.arange(10, 101, 1)
+V_orig = np.arange(1, 132, 1) * 0.001
+print(V_orig[130])
+# x = np.zeros((1, 91))
+# for i in range(91):
+#     x[0, i] = RMSE(data1[131 + i * 170, :], 0.123)
+# # print(data[90, 122])
+# print(x)
+
+sigma_Nifg = sigma_data(data1, V_orig, Nifg)
+# print(sigma_Nifg.shape)
+np.savetxt("scientific_research_with_python_demo/data_save/data_save1/Nifg_sigma_data_2.txt", sigma_Nifg, delimiter=",")
+# print(data.shape)
+# print(data1.shape)
+
+# sigma dT
+# data = np.loadtxt("scientific_research_with_python_demo/data_save/data_save0/dT_success_rate_3.txt", delimiter=",")
+# data1 = np.loadtxt("scientific_research_with_python_demo/data_save/data_save0/dT_est_data_3.txt", delimiter=",")
+# dT = np.arange(10, 90.5, 0.5)
+# V_orig = np.arange(1, 124, 1) * 0.001
+# sigma_dT = sigma_data(data1, V_orig, dT)
+# np.savetxt("scientific_research_with_python_demo/data_save/data_save0/dT_sigma_data_3.txt", sigma_dT, delimiter=",")
+
+# data_erro
+# data1 = np.loadtxt("scientific_research_with_python_demo/data_save/data_save0/dT_est_data_3.txt", delimiter=",")
+# data = np.loadtxt("scientific_research_with_python_demo/data_save/data_save0/dT_success_rate_3.txt", delimiter=",")
+# dT = np.arange(10, 90.5, 0.5)
+# print(data[50, 131])
+# print(dT[52])
+# print(data1[123 + 52 * 170, :])
+# data_af_cp = data1[(131 + 50 * 170) : (160 + 50 * 170), :]
+# np.savetxt("scientific_research_with_python_demo/data_save/data_save1/dT_est_data_3_35days.txt", data_af_cp, delimiter=",")
+# print(data_af_cp.shape)
+# print(dT[110])
+# data_10days_est = np.concatenate(
+#     [data1[4 + 110 * 170, :].reshape(1, 1000), data1[19 + 0 * 170, :].reshape(1, 1000), data1[99 + 0 * 170, :].reshape(1, 1000), data1[149 + 0 * 170, :].reshape(1, 1000)], axis=0
+# )
+# data_65days_est = np.concatenate(
+#     [data1[4 + 110 * 170, :].reshape(1, 1000), data1[19 + 110 * 170, :].reshape(1, 1000), data1[99 + 110 * 170, :].reshape(1, 1000), data1[149 + 110 * 170, :].reshape(1, 1000)],
+#     axis=0,
+# )
+# print(data_65days_est.shape)
+# np.savetxt("scientific_research_with_python_demo/data_save/data_save0/dT_est_data_3_65days_part.txt", data_65days_est, delimiter=",")

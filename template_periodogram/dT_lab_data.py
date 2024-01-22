@@ -11,11 +11,12 @@ with open("template_periodogram/param.json") as f:
     param_file = json.load(f)
 
 param_file["noise_level"] = 10
-param_file["param_name"] = ["height", "velocity"]
-param_file["Num_search_min"]["height"] = 600
-param_file["Num_search_max"]["height"] = 600
-param_file["step_orig"]["height"] = 0.1
+param_file["param_name"] = ["velocity"]
+param_file["Num_search_min"]["height"] = 60
+param_file["Num_search_max"]["height"] = 60
 V_orig = np.arange(1, 171, 1) * 0.001
+# V_orig = np.array([1, 5, 10, 20, 30, 50, 60, 80, 100, 150]) * 0.001
+print(V_orig)
 # H_orig = [10]
 
 
@@ -25,36 +26,36 @@ def test(a, return_list):
 
 # 多进程，共享字典
 T1 = time.perf_counter()
-dT = [36]
-H_orig = np.array([5, 10, 20, 30, 40, 50, 60])
+dT = np.arange(10, 90.5, 0.5)
 data = {}
 process_num_all = 10
-check_times = 500
+check_times = 1000
+
 T1 = time.perf_counter()
 if __name__ == "__main__":
-    for k in range(len(H_orig)):
-        H = H_orig[k]
-        print(f"H={H}m")
+    for k in range(len(dT)):
+        print(f"dT={dT[k]}")
         with Manager() as manager:
             shared_dict = manager.dict()
             process_list = []
-            for i in range(17):
+            for i in range(10):
                 # print("进程 %s" % i)
-                V = V_orig[i * 10 : (i + 1) * 10]
+                V = V_orig[i * 17 : (i + 1) * 17]
                 # print(V)
-                p = Process(target=af.param_experiment_v_h, args=("revisit_cycle", [36], V, H, param_file, "afV_H_mutiple_demo", check_times, shared_dict, 1, 1, i))
+                p = Process(target=af.param_experiment_v_data_sigma, args=("revisit_cycle", [dT[k]], V, param_file, "afV_H_mutiple_demo", check_times, shared_dict, 1, i))
                 p.start()
                 process_list.append(p)
             for p in process_list:
                 p.join()
             print("All subprocesses done!")
-            data[f"{k}"] = shared_dict.copy()
+            data[k] = shared_dict.copy()
 
         # with open("scientific_research_with_python_demo/data_save/afV_H_mutiple_demo.txt", "a") as f:
         #     np.savetxt(f, data_success_rate, delimiter=",")
         #     print("success_rate_save !")
 
-success_rate = af.data_collect(data, len(V_orig), process_num_all=17, test_length=len(H_orig))
-np.savetxt("scientific_research_with_python_demo/data_save/data_save0/Bn_normal_vh_demo.txt", success_rate, delimiter=",")
+est_data, success_rate = af.est_data_collect_sigma(data, process_num_all=10, test_length=17, data_length=len(dT))
+np.savetxt("scientific_research_with_python_demo/data_save/data_save0/dT_est_data_3.txt", est_data, delimiter=",")
+np.savetxt("scientific_research_with_python_demo/data_save/data_save0/dT_success_rate_3.txt", success_rate, delimiter=",")
 T2 = time.perf_counter()
 print("程序运行时间:%s秒" % (T2 - T1))
