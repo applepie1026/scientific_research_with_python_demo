@@ -1,0 +1,16 @@
+{
+"Nifg": 30, 
+"param_simulation": {"height":10,"velocity":0.005},
+"param_pseudo": {"height":0,"velocity":0},
+"noise_level": 5, 
+"param_orig": {"height":0,"velocity":0},
+"param_name": ["velocity"], 
+"sigma_v": 5, 
+"sigma_h": 10, 
+"sigma_y": 40,
+"revisit_cycle": 35,
+"normal_baseline": [],
+"Bn":333,
+"check_times":1000,
+"file_name":"test3"
+}

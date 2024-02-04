@@ -91,7 +91,83 @@ def check_success_rate(v, h, Nifg, noise_level, dT, Bn, h_bound, v_bound, sig0, 
     i = 0
     success_rate = []
     for k in range(check_times):
-        x = main(v, h, Nifg, noise_level, dT, Bn, h_bound, v_bound, sig0)[3]
-        if abs(x[0] - h) < 0.5 and abs(x[1] - v) < 0.0005:
+        afixed, a, Ps, x1, x2 = main(v, h, Nifg, noise_level, dT, Bn, h_bound, v_bound, sig0)
+
+        if abs((x1[0] - h) < 0.5 and abs(x1[1] - v) < 0.0005) or abs((x2[0] - h) < 0.5 and abs(x2[1] - v) < 0.0005):
             i += 1
     return i / check_times
+
+
+def check_success_rate1(v_range, h, Nifg, noise_level, dT, Bn, h_bound, v_bound, sig0, shared_dict, est_dict, check_times=500, multiple=1, process_num=0):
+    success_rate = np.zeros(len(v_range))
+    est_data = np.zeros((len(v_range), 2 * check_times))
+    print(f"{process_num}:est start")
+    for j in range(len(v_range)):
+        v = v_range[j]
+        i = 0
+        for k in range(check_times):
+            afixed, a, Ps, x1, x2 = main(v, h, Nifg, noise_level, dT, Bn, h_bound, v_bound, sig0)
+            est_data[j, k] = x1[0]
+            est_data[j, k + check_times] = x1[1]
+            if (abs(x1[0] - h) < 0.5 and abs(x1[1] - v) < 0.0005) or (abs(x2[0] - h) < 0.5 and abs(x2[1] - v) < 0.0005):
+                i += 1
+        success_rate[j] = i / check_times
+    if multiple == 1:
+        shared_dict.update({process_num: success_rate})
+        est_dict.update({process_num: est_data})
+        print(f"{process_num}:est done")
+    elif multiple == 0:
+        return success_rate
+
+
+def check_success_rate2(v_range, h, Nifg, noise_level, dT, Bn, h_bound, v_bound, sig0, shared_dict, check_times=500, multiple=1, process_num=0):
+    success_rate = np.zeros(len(v_range))
+
+    print(f"{process_num}:est start")
+    for j in range(len(v_range)):
+        v = v_range[j]
+        print(f"{process_num}:{v}")
+        i = 0
+        for k in range(check_times):
+            afixed, a, Ps, x1, x2 = main(v, h, Nifg, noise_level, dT, Bn, h_bound, v_bound, sig0)
+            if (abs(x1[0] - h) < 0.5 and abs(x1[1] - v) < 0.0005) or (abs(x2[0] - h) < 0.5 and abs(x2[1] - v) < 0.0005):
+                i += 1
+        # print(i)
+        success_rate[j] = i / check_times
+        print(f"{process_num}:500")
+    if multiple == 1:
+        shared_dict.update({process_num: success_rate})
+        print(f"{process_num}:est done")
+    elif multiple == 0:
+        return success_rate
+
+
+def check_success_data(v, h, Nifg, noise_level, dT, Bn, h_bound, v_bound, sig0, check_times=500):
+    est_data = np.zeros(2 * check_times)
+    # a_data_1st = np.zeros((check_times, Nifg))
+    i = 0
+    for k in range(check_times):
+        afixed, a, Ps, x1, x2 = main(v, h, Nifg, noise_level, dT, Bn, h_bound, v_bound, sig0)
+        if (abs(x1[0] - h) < 0.5 and abs(x1[1] - v) < 0.0005) or (abs(x2[0] - h) < 0.5 and abs(x2[1] - v) < 0.0005):
+            i += 1
+        # print(i)
+        est_data[k] = x1[0]
+        est_data[k + check_times] = x1[1]
+        # a_data_1st[k, :] = afixed[:, 0]
+    success_rate = i / check_times
+    # return success_rate, est_data, a_data_1st
+    return success_rate, est_data
+
+
+def multiple_main(v_range, h, Nifg, noise_level, dT, Bn, h_bound, v_bound, sig0, shared_dict, check_times=500, multiple=1, process_num=0):
+    data_all = {process_num: {}}
+    for j in range(len(v_range)):
+        v = v_range[j]
+        success_rate, est_data = check_success_data(v, h, Nifg, noise_level, dT, Bn, h_bound, v_bound, sig0, check_times)
+        k = j + (len(v_range) + 1) * process_num
+        data_all[process_num].update({k: est_data})
+
+    k = len(v_range) + (len(v_range) + 1) * process_num
+    data_all[process_num].update({k: success_rate})
+    shared_dict.update(data_all)
+    print(f"{process_num}:est done")
