@@ -30,13 +30,13 @@ def porabola_bn(N, sigma_bn):
 
 
 def add_gaussian_noise1(Nifg, noise_level_set):
-    noise_phase = np.random.normal(0, np.pi * noise_level_set / 180, (Nifg, 1))
+    noise_phase = np.random.normal(0, np.pi * noise_level_set / 180, Nifg)
     return noise_phase
 
 
-def DFT_phase_flatten(wrapped_phase, h2ph, v2ph, flatten_num, W_v, N):
+def DFT_phase_flatten(wrapped_phase, h2ph, v2ph, flatten_num, flatten_range, W_v, N):
     DFT_flatten = np.zeros(len(W_v))
-    for h in np.random.randint(-30, 30, flatten_num):
+    for h in np.random.randint(-flatten_range, flatten_range, flatten_num):
         # for h in np.random.normal(0, 60, flatten_num):
         flatten_phase = wrapped_phase - h * h2ph
         # flatten_signal = np.exp(1j * flatten_phase)
@@ -87,25 +87,25 @@ def DFT_phase_flatten(wrapped_phase, h2ph, v2ph, flatten_num, W_v, N):
 #     return DFT_flatten
 
 
-class dtft_af_all:
-    # xvalues:输入序列
-    def __init__(self, xvalues, p2ph):
-        self.yvalues = []
-        self.xvalues = xvalues
-        self.p2ph = p2ph
+# class dtft_af_all:
+#     # xvalues:输入序列
+#     def __init__(self, xvalues, p2ph):
+#         self.yvalues = []
+#         self.xvalues = xvalues
+#         self.p2ph = p2ph
 
-    # fre:频率坐标
-    def xjw(self, fre=[], N=30):
-        # （式1-1）实现yvalues为X（jw）频谱值
-        for f in fre:
-            p = 0
-            for x, b in zip(self.xvalues, self.p2ph):
-                p = math.e ** (-1j * f * b) * x + p
-            self.yvalues.append(p)
-        xjw_dft = np.array([])
-        for i in self.yvalues:
-            xjw_dft = np.append(xjw_dft, abs(i))
-        return xjw_dft / N
+#     # fre:频率坐标
+#     def xjw(self, fre=[], N=30):
+#         # （式1-1）实现yvalues为X（jw）频谱值
+#         for f in fre:
+#             p = 0
+#             for x, b in zip(self.xvalues, self.p2ph):
+#                 p = math.e ** (-1j * f * b) * x + p
+#             self.yvalues.append(p)
+#         xjw_dft = np.array([])
+#         for i in self.yvalues:
+#             xjw_dft = np.append(xjw_dft, abs(i))
+#         return xjw_dft / N
 
 
 class dtft_af_all_array:
@@ -130,56 +130,56 @@ class dtft_af_all_array:
         return coh
 
 
-class dtft_af_h_pv_array:
-    # xvalues:输入序列
-    def __init__(self, wrap_phase, h2ph, v2ph, v_est):
-        self.yvalues = []
-        self.phase_h = wrap_phase - v_est * v2ph
-        self.h2ph = h2ph
+# class dtft_af_h_pv_array:
+#     # xvalues:输入序列
+#     def __init__(self, wrap_phase, h2ph, v2ph, v_est):
+#         self.yvalues = []
+#         self.phase_h = wrap_phase - v_est * v2ph
+#         self.h2ph = h2ph
 
-    # fre:频率坐标
-    def xjw(self, fre=[], N=30):
-        # （式1-1）实现yvalues为X（jw）频谱值
-        searched_phase = self.h2ph.reshape(N, 1) * fre
-        coh_phase = self.phase_h.reshape(N, 1) * np.ones((1, len(fre))) - searched_phase
-        xjw_dft = np.sum(np.exp(1j * coh_phase), axis=0) / N
-        coh_all = abs(xjw_dft)
+#     # fre:频率坐标
+#     def xjw(self, fre=[], N=30):
+#         # （式1-1）实现yvalues为X（jw）频谱值
+#         searched_phase = self.h2ph.reshape(N, 1) * fre
+#         coh_phase = self.phase_h.reshape(N, 1) * np.ones((1, len(fre))) - searched_phase
+#         xjw_dft = np.sum(np.exp(1j * coh_phase), axis=0) / N
+#         coh_all = abs(xjw_dft)
 
-        return coh_all
-
-
-class dtft_af_h_pv:
-    # xvalues:输入序列
-    def __init__(self, xvalues, h2ph, v2ph, v_est):
-        self.yvalues = []
-        self.xvalues = xvalues
-        self.v2ph = v2ph
-        self.h2ph = h2ph
-        self.v_est = v_est
-
-    # fre:频率坐标
-    def xjw(self, fre=[], N=30):
-        # （式1-1）实现yvalues为X（jw）频谱值
-        for f in fre:
-            p = 0
-            for x, v_b, h_b in zip(self.xvalues, self.v2ph, self.h2ph):
-                p = math.e ** (-1j * (self.v_est * v_b + f * h_b)) * x + p
-            self.yvalues.append(p)
-        xjw_dft = np.array([])
-        for i in self.yvalues:
-            xjw_dft = np.append(xjw_dft, abs(i))
-
-        return xjw_dft / N
+#         return coh_all
 
 
-def dtft_vflatten_af(v, h, dBn, sigma_bn, dT, N, flatten_num, W_v, W_h):
+# class dtft_af_h_pv:
+#     # xvalues:输入序列
+#     def __init__(self, xvalues, h2ph, v2ph, v_est):
+#         self.yvalues = []
+#         self.xvalues = xvalues
+#         self.v2ph = v2ph
+#         self.h2ph = h2ph
+#         self.v_est = v_est
+
+#     # fre:频率坐标
+#     def xjw(self, fre=[], N=30):
+#         # （式1-1）实现yvalues为X（jw）频谱值
+#         for f in fre:
+#             p = 0
+#             for x, v_b, h_b in zip(self.xvalues, self.v2ph, self.h2ph):
+#                 p = math.e ** (-1j * (self.v_est * v_b + f * h_b)) * x + p
+#             self.yvalues.append(p)
+#         xjw_dft = np.array([])
+#         for i in self.yvalues:
+#             xjw_dft = np.append(xjw_dft, abs(i))
+
+#         return xjw_dft / N
+
+
+def dtft_vflatten_af(v, h, dBn, sigma_bn, dT, N, flatten_num, flatten_range, W_v, W_h):
     v2ph = dT * np.arange(1, N + 1, 1) * 4 * np.pi / (Lambda * 365)
     # h2ph = ((np.arange(1, N + 1, 1) * dBn + np.random.normal(0, sigma_bn, N)) * 4 * np.pi / (Lambda * R * np.sin(Incidence_angle))).reshape(N)
-    h2ph = ((np.random.randn(1, N) * 333) * 4 * np.pi / (Lambda * R * np.sin(Incidence_angle))).reshape(N)
+    h2ph = np.random.normal(0, 333, N) * 4 * np.pi / (Lambda * R * np.sin(Incidence_angle))
     # h2ph = (porabola_bn(N, sigma_bn) * 4 * np.pi / (Lambda * R * np.sin(Incidence_angle))).reshape(N)
-    fvt = v * v2ph + h * h2ph + add_gaussian_noise1(N, 5).reshape(N)
+    fvt = v * v2ph + h * h2ph + add_gaussian_noise1(N, 5)
     fvt_wrap = wrap(fvt)
-    DFT_flatten = DFT_phase_flatten(fvt_wrap, h2ph, v2ph, flatten_num, W_v, N)
+    DFT_flatten = DFT_phase_flatten(fvt_wrap, h2ph, v2ph, flatten_num, flatten_range, W_v, N)
     # DFT_h, v_est, h_est = est_vph1(fvt_wrap, DFT_flatten, h2ph, v2ph, W_h, W_v, N)
     # DFT_h, v_est, h_est = est_vph2(fvt_wrap, DFT_flatten, h2ph, v2ph, W_h, W_v, N)
     DFT_h, v_est, h_est = est_vph3(fvt_wrap, DFT_flatten, h2ph, v2ph, W_h, W_v, N)
@@ -222,48 +222,49 @@ def est_vph1(wrapped_phase, DFT_flatten, h2ph, v2ph, W_h, W_v, N):
 
 def est_vph3(wrapped_phase, DFT_flatten, h2ph, v2ph, W_h, W_v, N):
     v_est1 = W_v[np.argmax(DFT_flatten)]
-    fvh_cpl = np.exp(1j * wrapped_phase)
-    DFT_h = dtft_af_h_pv(fvh_cpl, h2ph, v2ph, v_est1).xjw(W_h, N)
+    phase_h = wrapped_phase - v_est1 * v2ph
+    DFT_h = dtft_af_all_array(phase_h, h2ph).xjw(W_h, N)
     # DFT_h = dtft_af_h_pv_array(wrapped_phase, h2ph, v2ph, v_est).xjw(W_h, N)
-    h_est1 = np.round(W_h[np.argmax(DFT_h)], 1)
+    h_est1 = W_h[np.argmax(DFT_h)]
     phase_v = wrapped_phase - h_est1 * h2ph
     DFT_v = dtft_af_all_array(phase_v, v2ph).xjw(W_v, N)
     v_est2 = np.round(W_v[np.argmax(DFT_v)], 4)
     phase_h = wrapped_phase - v_est2 * v2ph
     DFT_h = dtft_af_all_array(phase_h, h2ph).xjw(W_h, N)
-    h_est2 = np.round(W_h[np.argmax(DFT_h)], 1)
+    h_est2 = np.round(W_h[np.argmax(DFT_h)], 2)
     return DFT_h, v_est2, h_est2
 
 
-v = 0.1
-h = 10
-dBn = 10
-sigma_bn = 5
-dT = 35
-N = 30
-flatten_num = 200
-W_v = np.arange(-1600, 1600 + 1, 1) * 0.0001
-W_h = np.arange(-600, 600 + 1, 1) * 0.1
-X = np.arange(1, N + 1, 1)
+# v = 0.005
+# h = 10
+# dBn = 10
+# sigma_bn = 5
+# dT = 35
+# N = 30
+# flatten_num = 100
+# W_v = np.arange(-1600, 1600 + 1, 1) * 0.0001
+# W_h = np.arange(-600, 600 + 1, 1) * 0.1
+# X = np.arange(1, N + 1, 1)
+# # T1 = time.perf_counter()
+# # dtft_af_all_array(X, X).xjw(W_v, 30)
+# # T2 = time.perf_counter()
+# # print("程序运行时间:%s秒" % (T2 - T1))
 # T1 = time.perf_counter()
-# dtft_af_all_array(X, X).xjw(W_v, 30)
+# v_data = np.zeros(1000)
+# h_data = np.zeros(1000)
+# success_num = 0
+# check_times = 200
+# for i in range(check_times):
+#     xjw, xjw_h, v_done, h_done = dtft_vflatten_af(v, h, dBn, sigma_bn, dT, N, flatten_num, W_v, W_h)
+#     v_data[i] = v_done
+#     h_data[i] = h_done
+#     if abs(v_done - v) <= 0.0005 and abs(h_done - h) <= 0.5:
+#         success_num += 1
+#     print(f"v_est={v_done},h_est={h_done}")
+
 # T2 = time.perf_counter()
 # print("程序运行时间:%s秒" % (T2 - T1))
-T1 = time.perf_counter()
-v_data = np.zeros(1000)
-h_data = np.zeros(1000)
-success_num = 0
-for i in range(1000):
-    xjw, xjw_h, v_est1, h_est1 = dtft_vflatten_af(v, h, dBn, sigma_bn, dT, N, flatten_num, W_v, W_h)
-    v_data[i] = v_est1
-    h_data[i] = h_est1
-    if abs(v_est1 - v) <= 0.0005 and abs(h_est1 - h) <= 0.5:
-        success_num += 1
-    # print(f"v_est={v_est1},h_est={h_est1}")
-
-T2 = time.perf_counter()
-print("程序运行时间:%s秒" % (T2 - T1))
-print(f"success_rate={success_num/1000}")
+# print(f"success_rate={success_num/check_times}")
 # 求RMSE
 # v_rmse = np.sqrt(np.mean((v_data - v) ** 2))
 # h_rmse = np.sqrt(np.mean((h_data - h) ** 2))

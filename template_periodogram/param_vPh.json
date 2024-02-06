@@ -6,8 +6,9 @@
 "param_name": ["height","velocity"], 
 "Num_search_min": {"height":600,"velocity":1600}, 
 "Num_search_max": {"height":600,"velocity":1600}, 
-"revisit_cycle": 36,
+"revisit_cycle": 35,
 "normal_baseline":[],
 "Bn":333,
-"flatten_num":100
+"flatten_num":100,
+"faltten_range":10
 }

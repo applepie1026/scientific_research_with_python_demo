@@ -32,6 +32,7 @@ class DFT_periodogram:
         self.normal_baseline = rng.normal(0, param["Bn"], param["Nifg"])
         # print(f"{check_num},{data_id}:{self.normal_baseline}")
         self.flatten_num = param["flatten_num"]
+        self.flatten_range = param["flatten_range"]
 
     @staticmethod
     def wrap_phase(phase):
@@ -61,7 +62,7 @@ class DFT_periodogram:
 
     def par2phase(self):
         self.v2ph = m2ph * (self.revisit_cycle / 365) * np.arange(1, self.Nifg + 1, 1)
-        self.h2ph = (m2ph / R * np.sin(Incidence_angle)) * self.normal_baseline
+        self.h2ph = m2ph * self.normal_baseline / (R * np.sin(Incidence_angle))
 
     def construct_searching_parameters(self):
         self.searching_v = np.arange(-self.Num_search_min["velocity"], self.Num_search_max["velocity"] + 1, 1) * self.step_orig["velocity"]
@@ -78,7 +79,7 @@ class DFT_periodogram:
     def DFT_phase_flatten(self):
         self.phase_flatten = np.zeros(len(self.searching_v))
         rng_flatten = np.random.default_rng(self.rng_flatten)
-        for h in rng_flatten.integers(-60, 60, self.flatten_num, endpoint=True):
+        for h in rng_flatten.integers(-self.flatten_range, self.flatten_range, self.flatten_num):
             flatten_phase = self.phase_obs - self.h2ph * h
             DFT_signal = self.dtft_af_array(flatten_phase, self.v2ph, self.Nifg, self.searching_v)
             self.phase_flatten += DFT_signal
@@ -149,6 +150,19 @@ def compute_success_rate_multi(param, check_times, data_range, process_id, data_
     print(f"process {process_id} finished!")
 
 
+def compute_success_rate_multi_h(param, check_times, data_range, process_id, data_length, shared_dict):
+    print(f"process {process_id} start!")
+    data_all = {process_id: {}}
+    for i in range(len(data_range)):
+        data_id = i + process_id * len(data_range)
+        param["param_simulation"]["height"] = data_range[i]
+        success_rate, v_est_data, h_est_data = compute_success_rate(param, check_times, data_id, data_length)
+        print(f"process {process_id} data_id {data_id} success_rate: {success_rate}")
+        data_all[process_id].update({data_id: {"success_rate": success_rate, "v_est_data": v_est_data, "h_est_data": h_est_data}})
+    shared_dict.update(data_all)
+    print(f"process {process_id} finished!")
+
+
 def data_collect(data, changed_param, V_orig, process_num_all, test_length):
     success_rate = np.zeros((len(changed_param), len(V_orig)))
     v_est_data = []
@@ -159,8 +173,8 @@ def data_collect(data, changed_param, V_orig, process_num_all, test_length):
             for j in range(test_length):
                 data_id = i * test_length + j
                 success_rate[k][data_id] = data[k][i][data_id]["success_rate"]
-                v_est_data.append(data[k][i][data_id]["v_est_data"])
-                h_est_data.append(data[k][i][data_id]["h_est_data"])
+                v_est_data.append(data[k][i][data_id]["v_est_data"].reshape(1, -1))
+                h_est_data.append(data[k][i][data_id]["h_est_data"].reshape(1, -1))
     v_est_data = np.concatenate(v_est_data, axis=0)
     h_est_data = np.concatenate(h_est_data, axis=0)
     return success_rate, v_est_data, h_est_data
