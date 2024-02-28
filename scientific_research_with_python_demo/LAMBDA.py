@@ -66,13 +66,14 @@ from scipy.stats import norm
 from numpy.linalg import eig
 import numpy.matlib
 
+
 def ldldecom(Qahat):
-    """ 
+    """
     # ----------------------------------------------------------------------- #
     #   ldldecom: Find LtDL-decomposition of Qahat-matrix                     #
     #                                                                         #
     #             L,D = ldldecom(Qahat)                                       #
-    #                                                                         #             
+    #                                                                         #
     #   This function finds the LtDL decomposition of a given ambiguity       #
     #   variance-covariance matrix.                                           #
     #                                                                         #
@@ -92,50 +93,51 @@ def ldldecom(Qahat):
     #              Mathematical Geodesy and Positioning,                      #
     #              Delft University of Technology                             #
     # ----------------------------------------------------------------------- #
-    """ 
-    
+    """
+
     # Find the total number of ambiguities
     n = len(Qahat)
-    
+
     # Initialize the n-by-n lower triangular matrix and the diagonal n-vector
-    L    = np.zeros((n,n))
-    D    = np.empty((1,n))
+    L = np.zeros((n, n))
+    D = np.empty((1, n))
     D[:] = np.nan
 
     # Decorrelate the input vc-matrix starting from its last row
-    for i in range(n-1,-1,-1):
-    
-        D[0,i] = Qahat[i,i].copy()
-        
-        L[i,0:i+1] = Qahat[i,0:i+1]/np.sqrt(Qahat[i,i])
-    
-        for j in range(0,i,1):
-            Qahat[j,0:j+1] -= L[i,0:j+1]*L[i,j]
-        
-        L[i,0:i+1] /= L[i,i]
-        
-    # Terminate in case the input vc-matrix is not positive definite      
-    if np.any((D<1e-10)) == True:
-        print("Error: the input vc-matrix (in function ldldecom) is not " +  
-               "positive definite!")
-        raise SystemExit
-        
+    for i in range(n - 1, -1, -1):
+
+        D[0, i] = Qahat[i, i].copy()
+
+        L[i, 0 : i + 1] = Qahat[i, 0 : i + 1] / np.sqrt(Qahat[i, i])
+
+        for j in range(0, i, 1):
+            Qahat[j, 0 : j + 1] -= L[i, 0 : j + 1] * L[i, j]
+
+        L[i, 0 : i + 1] /= L[i, i]
+
+    # Terminate in case the input vc-matrix is not positive definite
+    # if np.any((D<1e-10)) == True:
+    #     print("Error: the input vc-matrix (in function ldldecom) is not " +
+    #            "positive definite!")
+    #     raise SystemExit
+
     return L, D
 
-def decorrel(Qahat,ahat):
-    """ 
+
+def decorrel(Qahat, ahat):
+    """
     # ----------------------------------------------------------------------- #
     #   decorrel: Decorrelate a (co)variance matrix of ambiguities            #
     #                                                                         #
     #             Qzhat,Z,L,D,zhat,iZt = decorrel(Qahat,ahat)                 #
-    #                                                                         #             
+    #                                                                         #
     #   This function creates a decorrelated Q-matrix, by finding the         #
     #   Z-matrix and performing the corresponding transformation.             #
     #                                                                         #
     #   The routine is based on Fortran routines written by Paul de Jonge     #
     #   and on Matlab-routines written by Kai Borre.                          #
-    #   The resulting Z-matrix can be used as follows:                        # 
-    #       zhat = Z.T.dot(ahat) | \hat{z} = Z^T * \hat{a}                    # 
+    #   The resulting Z-matrix can be used as follows:                        #
+    #       zhat = Z.T.dot(ahat) | \hat{z} = Z^T * \hat{a}                    #
     #       Qzhat = Z.T.dot(Qahat).dot(Z) | Q_{\hat{z}} = Z^T*Q_{\hat{a}}*Z   #
     #                                                                         #
     #   Input arguments:                                                      #
@@ -158,94 +160,92 @@ def decorrel(Qahat,ahat):
     #              Mathematical Geodesy and Positioning,                      #
     #              Delft University of Technology                             #
     # ----------------------------------------------------------------------- #
-    """    
-                                                                            
+    """
+
     # Tests on inputs ahat and Qahat
-    
+
     # Is the Qahat symmetric ?
-    if ((Qahat-Qahat.T)<1e-8).all()==False:
-        print("Variance-covariance matrix of float estimated ambiguities " + \
-              "is not symmetric!")
+    if ((Qahat - Qahat.T) < 1e-8).all() == False:
+        print("Variance-covariance matrix of float estimated ambiguities " + "is not symmetric!")
         raise SystemExit
-        
-    # Is the Qahat positive-definite ?    
-    
+
+    # Is the Qahat positive-definite ?
+
     # Get the eigenvalues (D) and eigenvectors (V) of Qahat
-    D,V = eig(Qahat)
-    
-    # Check the positive-definiteness    
-    if sum(D>0) != len(Qahat):
-        print("Variance-covariance matrix of float estimated ambiguities " + \
-              "is not positive definite!")
-        raise SystemExit   
+    D, V = eig(Qahat)
+
+    # Check the positive-definiteness
+    if sum(D > 0) != len(Qahat):
+        print("Variance-covariance matrix of float estimated ambiguities " + "is not positive definite!")
+        raise SystemExit
 
     # Initialization
-    n   = len(Qahat)
+    n = len(Qahat)
     iZt = np.eye(n)
-    i1  = n-2
-    sw  = 1
+    i1 = n - 2
+    sw = 1
 
     # LtDL decomposition
-    L,D = ldldecom(Qahat.copy())
+    L, D = ldldecom(Qahat.copy())
 
     # Decorrelation procedure
     while sw:
-    
-        i  = n-1 # loop for column from n-1 to 0
-        sw = 0    
-    
+
+        i = n - 1  # loop for column from n-1 to 0
+        sw = 0
+
         while (not sw) and (i > 0):
-        
-            i-=1 # the i-th column
-        
+
+            i -= 1  # the i-th column
+
             if i <= i1:
-            
-                for j in range(i+1,n):
-                    
-                    mu = np.round(L[j,i])
-                
-                    if mu != 0.0: # if mu not equal to 0
-                        L[j:n,i] -= mu*L[j:n,j]
-                        iZt[:,j] += mu*iZt[:,i] # iZt is inv(Zt) matrix
 
-            delta = D[0,i] + L[i+1,i]**2 * D[0,i+1]
-        
-            if delta < D[0,i+1]:
-            
-                lamda    = D[0,i+1] * L[i+1,i] / delta
-                eta      = D[0,i] / delta
-                D[0,i]   = eta*D[0,i+1]
-                D[0,i+1] = delta            
+                for j in range(i + 1, n):
 
-                L[i:i+2,0:i] = \
-                     np.array([[-L[i+1,i],1],[eta, lamda]]).dot(L[i:i+2,0:i])
-                L[i+1,i] = lamda
-            
-                # Swap rows i and i+1            
-                if i==0:
-                
-                    L[i+2:n,i:i+2:1] = L[i+2:n,i+1::-1].copy()
-                    iZt[:,i:i+2:1]   = iZt[:,i+1::-1].copy()
-                
+                    mu = np.round(L[j, i])
+
+                    if mu != 0.0:  # if mu not equal to 0
+                        L[j:n, i] -= mu * L[j:n, j]
+                        iZt[:, j] += mu * iZt[:, i]  # iZt is inv(Zt) matrix
+
+            delta = D[0, i] + L[i + 1, i] ** 2 * D[0, i + 1]
+
+            if delta < D[0, i + 1]:
+
+                lamda = D[0, i + 1] * L[i + 1, i] / delta
+                eta = D[0, i] / delta
+                D[0, i] = eta * D[0, i + 1]
+                D[0, i + 1] = delta
+
+                L[i : i + 2, 0:i] = np.array([[-L[i + 1, i], 1], [eta, lamda]]).dot(L[i : i + 2, 0:i])
+                L[i + 1, i] = lamda
+
+                # Swap rows i and i+1
+                if i == 0:
+
+                    L[i + 2 : n, i : i + 2 : 1] = L[i + 2 : n, i + 1 :: -1].copy()
+                    iZt[:, i : i + 2 : 1] = iZt[:, i + 1 :: -1].copy()
+
                 else:
-                
-                    L[i+2:n,i:i+2:1] = L[i+2:n,i+1:i-1:-1].copy()
-                    iZt[:,i:i+2:1]   = iZt[:,i+1:i-1:-1].copy()
+
+                    L[i + 2 : n, i : i + 2 : 1] = L[i + 2 : n, i + 1 : i - 1 : -1].copy()
+                    iZt[:, i : i + 2 : 1] = iZt[:, i + 1 : i - 1 : -1].copy()
 
                 i1 = i
                 sw = 1
-    
-    # Return the transformed Q-matrix and the transformation matrix     
-    Z     = np.round(inv(iZt.T))
+
+    # Return the transformed Q-matrix and the transformation matrix
+    Z = np.round(inv(iZt.T))
     Qzhat = Z.T.dot(Qahat).dot(Z)
 
     # Return the decorrelated ambiguities
-    zhat  = Z.T.dot(ahat)                                                                          
-    
-    return Qzhat,Z,L,D,zhat,iZt
-    
-def bootstrap(ahat,L):
-    """ 
+    zhat = Z.T.dot(ahat)
+
+    return Qzhat, Z, L, D, zhat, iZt
+
+
+def bootstrap(ahat, L):
+    """
     # ----------------------------------------------------------------------- #
     #   bootstrap: Bootstrapping for integer ambiguity resolution             #
     #                                                                         #
@@ -258,18 +258,18 @@ def bootstrap(ahat,L):
     #       ahat : float ambiguities (1D numpy array)                         #
     #       L    : unit lower triangular matrix from LtDL-decomposition of    #
     #              the vc-matrix                                              #
-    #                                                                         #        
+    #                                                                         #
     #   Output arguments:                                                     #
     #      afixed: fixed ambiguities (1D numpy array)                         #
-    #                                                                         #        
+    #                                                                         #
     #   Note:                                                                 #
     #       The success rate with boostrapping depends on the parametrization #
     #       of the float ambiguities ahat. It should be applied to the        #
     #       decorrelated ambiguities. The complete procedure is then:         #
-    #           Qzhat,Z,L,D,zhat,iZt = decorrel(Qahat,ahat)                   # 
+    #           Qzhat,Z,L,D,zhat,iZt = decorrel(Qahat,ahat)                   #
     #           zfixed = bootstrap(zhat,L)                                    #
     #           afixed = iZt.dot(zfixed)                                      #
-    #                                                                         #        
+    #                                                                         #
     # ----------------------------------------------------------------------- #
     #   Function : boostrap                                                   #
     #   Date     : 06-SEP-2010                                                #
@@ -277,121 +277,130 @@ def bootstrap(ahat,L):
     #              GNSS Research Center, Department of Spatial Sciences,      #
     #              Curtin University of Technology                            #
     # ----------------------------------------------------------------------- #
-    """   
-                                                                            
+    """
+
     # Number of ambiguities
     n = len(ahat)
 
     # Initialize vectors to store conditional and fixed ambiguities
-    afcond = np.zeros(n,)
-    afixed = np.zeros(n,)
+    afcond = np.zeros(
+        n,
+    )
+    afixed = np.zeros(
+        n,
+    )
 
     # Initialize vector to compute conditional a
-    S = np.zeros(n,)
+    S = np.zeros(
+        n,
+    )
 
     # Start from last ambiguity (should preferably be the most precise one)
-    afcond[n-1] = ahat[n-1]
+    afcond[n - 1] = ahat[n - 1]
 
     # Rounding of last ambiguity
-    afixed[n-1] = round(afcond[n-1])
+    afixed[n - 1] = round(afcond[n - 1])
 
-    for i in range(n-2,-1,-1):
-    
+    for i in range(n - 2, -1, -1):
+
         # Compute the i-th cond. ambiguity on the ambiguities from i+1 to n
-        S[0:i+1] = S[0:i+1] + (afixed[i+1]-afcond[i+1])*L[i+1,0:i+1]
-    
+        S[0 : i + 1] = S[0 : i + 1] + (afixed[i + 1] - afcond[i + 1]) * L[i + 1, 0 : i + 1]
+
         afcond[i] = ahat[i] + S[i]
-        afixed[i] = round(afcond[i])                                                                            
-        
+        afixed[i] = round(afcond[i])
+
     return afixed
-    
+
+
 def SR_IB_1(Qahat):
     """
     # ----------------------------------------------------------------------- #
     #   SR_IB_1: Compute the bootstrapped success rate (function #1)          #
     #                                                                         #
-    #            Ps = SR_IB_1(Qahat)                                          # 
+    #            Ps = SR_IB_1(Qahat)                                          #
     #                                                                         #
     #   This function computes the exact bootstrapped success rate given the  #
     #   variance-covariance matrix of float estimated ambiguities.            #
-    #                                                                         #    
+    #                                                                         #
     #   Input arguments:                                                      #
     #       Qahat: Variance-covariance matrix of ambiguities                  #
     #              (symmetric n-by-n matrix; 2D numpy array)                  #
-    #                                                                         #        
+    #                                                                         #
     #   Output arguments:                                                     #
     #       Ps   : Exact bootstrapped success rate                            #
-    #                                                                         #        
+    #                                                                         #
     # ----------------------------------------------------------------------- #
     #   Function : SR_IB_1                                                    #
     #   Date     : 08-FEB-2019                                                #
     #   Author   : Dimitrios Psychas                                          #
     #              Mathematical Geodesy and Positioning,                      #
-    #              Delft University of Technology                             # 
+    #              Delft University of Technology                             #
     # ----------------------------------------------------------------------- #
-    """     
-    
-    # Perform the LtDL decomposition                                                                  
-    L,D = ldldecom(Qahat)           
+    """
+
+    # Perform the LtDL decomposition
+    L, D = ldldecom(Qahat)
 
     # Compute the exact bootstrapped success rate using the D matrix
-    Ps = np.prod(2*norm.cdf(0.5/np.sqrt(D))-1)     
+    Ps = np.prod(2 * norm.cdf(0.5 / np.sqrt(D)) - 1)
 
     return Ps
+
 
 def SR_IB_2(D):
     """
     # ----------------------------------------------------------------------- #
     #   SR_IB_2: Compute the bootstrapped success rate (function #2)          #
     #                                                                         #
-    #            Ps = SR_IB_2(D)                                              # 
+    #            Ps = SR_IB_2(D)                                              #
     #                                                                         #
     #   This function computes the exact bootstrapped success rate given the  #
     #   diagonal matrix D from LtDL-decomposition of the variance-covariance  #
     #   matrix of float ambiguities                                           #
-    #                                                                         #    
+    #                                                                         #
     #   Input arguments:                                                      #
     #       D    : Diagonal matrix D from LtDL-decomposition                  #
-    #                                                                         #        
+    #                                                                         #
     #   Output arguments:                                                     #
     #       Ps   : Exact bootstrapped success rate                            #
-    #                                                                         #        
+    #                                                                         #
     # ----------------------------------------------------------------------- #
     #   Function : SR_IB_2                                                    #
     #   Date     : 08-FEB-2019                                                #
     #   Author   : Dimitrios Psychas                                          #
     #              Mathematical Geodesy and Positioning,                      #
-    #              Delft University of Technology                             # 
+    #              Delft University of Technology                             #
     # ----------------------------------------------------------------------- #
-    """            
+    """
 
     # Compute the exact bootstrapped success rate using the D matrix
-    Ps = np.prod(2*norm.cdf(0.5/np.sqrt(D))-1)     
+    Ps = np.prod(2 * norm.cdf(0.5 / np.sqrt(D)) - 1)
 
-    return Ps      
-    
-def ssearch(ahat,L,D,ncands):
+    return Ps
+
+
+def ssearch(ahat, L, D, ncands):
     """
     # ----------------------------------------------------------------------- #
     #   ssearch: Search-and-shrink technique for integer-least squares (ILS)  #
     #            ambiguity estimation                                         #
     #                                                                         #
-    #            afixed,sqnorm = ssearch(ahat,L,D,ncands)                     # 
+    #            afixed,sqnorm = ssearch(ahat,L,D,ncands)                     #
     #                                                                         #
     #   This function performs the ILS method based on search-and-shrink      #
-    #                                                                         #    
+    #                                                                         #
     #   Input arguments:                                                      #
     #       ahat  : Float ambiguities (should be decorrelated for             #
     #               computational efficiency; 1D numpy array)                 #
     #       L,D   : LtDL-decomposition of the variance-covariance matrix of   #
     #               the float ambiguities                                     #
     #       ncands: Number of requested candidates                            #
-    #                                                                         #        
+    #                                                                         #
     #   Output arguments:                                                     #
     #       afixed: Estimated integers (n-by-ncands numpy array)              #
     #       sqnorm: Corresponding squared norms (ncands-vector, ascendantly   #
     #               ordered, 1D numpy array)                                  #
-    #                                                                         #        
+    #                                                                         #
     # ----------------------------------------------------------------------- #
     #   Function  : ssearch                                                   #
     #   Date      : 02-SEP-2010                                               #
@@ -399,112 +408,121 @@ def ssearch(ahat,L,D,ncands):
     #               GNSS Research Centre, Department of Spatial Sciences,     #
     #               Curtin University of Technology                           #
     # ----------------------------------------------------------------------- #
-    """    
-    
+    """
+
     # Is the ambiguity vector an array with entries ?
-    if ahat.size>0:
-        if not isinstance(ahat,np.ndarray):
+    if ahat.size > 0:
+        if not isinstance(ahat, np.ndarray):
             print("The ambiguity vector is not an array!")
             raise SystemExit
     else:
         print("The ambiguity vector is empty!")
         raise SystemExit
-        
-    # Initializing outputs
-    n      = len(ahat)
-    afixed = np.zeros((n,ncands))
-    sqnorm = np.zeros((1,ncands))
 
-    Chi2      = 1.0e+18 # start with an infinite chi^2
-    dist      = np.zeros(n,) # dist(k)=sum_{j=k+1}^{n}(a_j-acond_j)^2/d_j 
+    # Initializing outputs
+    n = len(ahat)
+    afixed = np.zeros((n, ncands))
+    sqnorm = np.zeros((1, ncands))
+
+    Chi2 = 1.0e18  # start with an infinite chi^2
+    dist = np.zeros(
+        n,
+    )  # dist(k)=sum_{j=k+1}^{n}(a_j-acond_j)^2/d_j
     endsearch = 0
-    count     = -1 # the number of candidates
-    
+    count = -1  # the number of candidates
+
     # Initialize arrays
-    acond = np.zeros(n,)
-    zcond = np.zeros(n,)
-    step  = np.zeros(n,)
+    acond = np.zeros(
+        n,
+    )
+    zcond = np.zeros(
+        n,
+    )
+    step = np.zeros(
+        n,
+    )
 
     acond[-1] = ahat[-1]
     zcond[-1] = round(acond[-1])
 
-    left = acond[-1]-zcond[-1]
+    left = acond[-1] - zcond[-1]
     step[-1] = np.sign(left)
 
     if step[-1] == 0:
         step[-1] = 1
-    
-    imax=ncands-1 # initially, the maximum F(z) is at ncands
 
-    S=np.zeros((n,n)) # used to compute conditional ambiguities
+    imax = ncands - 1  # initially, the maximum F(z) is at ncands
 
-    k=n-1
+    S = np.zeros((n, n))  # used to compute conditional ambiguities
+
+    k = n - 1
 
     # Start the main search-loop
     while not endsearch:
-        newdist = dist[k]+left**2/D[0,k]
-    
+        newdist = dist[k] + left**2 / D[0, k]
+
         if newdist < Chi2:
-        
+
             if k != 0:
-            
-                k-=1
-                dist[k]=newdist
-                S[k,0:k+1] = S[k+1,0:k+1] + (zcond[k+1]-acond[k+1])*L[k+1,0:k+1]
-            
-                acond[k] = ahat[k] + S[k,k]
+
+                k -= 1
+                dist[k] = newdist
+                S[k, 0 : k + 1] = S[k + 1, 0 : k + 1] + (zcond[k + 1] - acond[k + 1]) * L[k + 1, 0 : k + 1]
+
+                acond[k] = ahat[k] + S[k, k]
                 zcond[k] = round(acond[k])
-                left     = acond[k] - zcond[k]
-                step[k]  = np.sign(left)
-            
+                left = acond[k] - zcond[k]
+                step[k] = np.sign(left)
+
                 if step[k] == 0:
                     step[k] = 1
-                
+
             else:
-            
+
                 # Case 2: store the found candidate and try next valid integer
-                if count < ncands-2:
-                
+                if count < ncands - 2:
+
                     # Store the first ncands-1 initial points as candidates
                     count += 1
-                    afixed[:,count] = zcond[0:n]
-                    sqnorm[0,count] = newdist # store F(zcond)     
-                
+                    afixed[:, count] = zcond[0:n]
+                    sqnorm[0, count] = newdist  # store F(zcond)
+
                 else:
-                
-                    afixed[:,imax] = zcond[0:n]
-                    sqnorm[0,imax] = newdist               
-                
-                    imax = np.argmax(sqnorm[0,:])
-                    Chi2 = sqnorm[0,imax]
-                
-                zcond[0] += step[0] # next valid integer
-                left      = acond[0] - zcond[0]
-                step[0]   = -step[0] - np.sign(step[0])
-            
+
+                    afixed[:, imax] = zcond[0:n]
+                    sqnorm[0, imax] = newdist
+
+                    imax = np.argmax(sqnorm[0, :])
+                    Chi2 = sqnorm[0, imax]
+
+                zcond[0] += step[0]  # next valid integer
+                left = acond[0] - zcond[0]
+                step[0] = -step[0] - np.sign(step[0])
+
         else:
-            
+
             # Case 3: exit or move up
-            if k == n-1:
+            if k == n - 1:
                 endsearch = 1
             else:
-                k += 1 # move up
-                zcond[k] += step[k] # next valid integer
-                left      = acond[k] - zcond[k]
-                step[k]   = -step[k] - np.sign(step[k])
-    
+                k += 1  # move up
+                zcond[k] += step[k]  # next valid integer
+                left = acond[k] - zcond[k]
+                step[k] = -step[k] - np.sign(step[k])
+
     # Order the arrays
-    order  = np.argsort(sqnorm)     
-    sqnorm = sqnorm[0,order]
-    afixed = afixed[:,order]
-    
+    order = np.argsort(sqnorm)
+    sqnorm = sqnorm[0, order]
+    afixed = afixed[:, order]
+
     # Return the best integers
-    afixed = afixed[:,0]
+    afixed = afixed[:, 0]
     sqnorm = sqnorm[0]
-    
-    return afixed, sqnorm    
-    
-def parsearch(zhat,Qzhat,Z,L,D,P0=0.995,ncands=2):
+
+    return afixed, sqnorm
+
+
+def parsearch(zhat, Qzhat, Z, L, D, P0=0.995, ncands=2):
     """
     # ----------------------------------------------------------------------- #
     #   parsearch: Partial ambiguity resolution (PAR)                         #
@@ -514,7 +532,7 @@ def parsearch(zhat,Qzhat,Z,L,D,P0=0.995,ncands=2):
     #                                                                         #
     #   This function performs an integer bootstrapping procedure for partial #
     #   ambiguity resolution with user-defined success-rate P0                #
-    #                                                                         #    
+    #                                                                         #
     #   Input arguments:                                                      #
     #       zhat  : Decorrelated float ambiguities (1D numpy array)           #
     #       Qzhat : Variance-covariance matrix of decorrelated float          #
@@ -525,7 +543,7 @@ def parsearch(zhat,Qzhat,Z,L,D,P0=0.995,ncands=2):
     #       P0    : Minimum required success rate [default=0.995]             #
     #       ncands: Number of requested integer candidate vectors             #
     #               [default=2]                                               #
-    #                                                                         #        
+    #                                                                         #
     #   Output arguments:                                                     #
     #       zpar  : Subset of fixed ambiguities (nfixed-by-ncands 2D numpy    #
     #               array)                                                    #
@@ -555,7 +573,7 @@ def parsearch(zhat,Qzhat,Z,L,D,P0=0.995,ncands=2):
     #                                                                         #
     #       Hence, zfixed is not required. LAMBDA, however, does give the     #
     #       solution in terms of the full ambiguity vector.                   #
-    #                                                                         #        
+    #                                                                         #
     # ----------------------------------------------------------------------- #
     #   Function  : parsearch                                                 #
     #   Date      : 04-APR-2012                                               #
@@ -565,73 +583,74 @@ def parsearch(zhat,Qzhat,Z,L,D,P0=0.995,ncands=2):
     #               Mathematical Geodesy and Positioning,                     #
     #               Delft University of Technology                            #
     # ----------------------------------------------------------------------- #
-    """   
-    
+    """
+
     # Get the number of ambiguities from the dimension of the vc-matrix
     n = len(Qzhat)
 
     # Compute the bootstrapped success rate if all ambiguities would be fixed
     Ps = SR_IB_2(D)
 
-    k=0
-    while Ps<P0 and k<(n-1):
-        k+=1
-        
-        # Compute the bootstrapped success rate if the last n-k+1 ambiguities 
+    k = 0
+    while Ps < P0 and k < (n - 1):
+        k += 1
+
+        # Compute the bootstrapped success rate if the last n-k+1 ambiguities
         # would be fixed
         Ps = SR_IB_2(D[0][k:])
 
     if Ps > P0:
-    
-        zpar, sqnorm = ssearch(zhat[k:],L[k:,k:],D[[0],k:],2)
-    
-        Qzpar = Qzhat[k:,k:]
-        Zpar  = Z[:,k:]
-    
-        # First k-1 ambiguities are adjusted based on correlation with the 
+
+        zpar, sqnorm = ssearch(zhat[k:], L[k:, k:], D[[0], k:], 2)
+
+        Qzpar = Qzhat[k:, k:]
+        Zpar = Z[:, k:]
+
+        # First k-1 ambiguities are adjusted based on correlation with the
         # fixed ambiguities
-        QP = Qzhat[:k,k:].dot(inv(Qzhat[k:,k:])) 
-    
-        zfixed=np.zeros((k,ncands))
-        for i in range(0,ncands):
-            zfixed[:,i] = zhat[:k] - QP.dot(zhat[k:]-zpar[:,i])
-    
-        zfixed = np.concatenate((zfixed,zpar),axis=0)
-    
-        nfixed = n-k
-    
+        QP = Qzhat[:k, k:].dot(inv(Qzhat[k:, k:]))
+
+        zfixed = np.zeros((k, ncands))
+        for i in range(0, ncands):
+            zfixed[:, i] = zhat[:k] - QP.dot(zhat[k:] - zpar[:, i])
+
+        zfixed = np.concatenate((zfixed, zpar), axis=0)
+
+        nfixed = n - k
+
     else:
-    
-        zpar   = []
-        Qzpar  = []
-        Zpar   = []
+
+        zpar = []
+        Qzpar = []
+        Zpar = []
         sqnorm = []
-        Ps     = np.nan
+        Ps = np.nan
         zfixed = zhat
         nfixed = 0
-        
-    return zpar,sqnorm,Qzpar,Zpar,Ps,nfixed,zfixed    
-    
-def ratioinv(Pf_FIX,Pf_ILS,n):
+
+    return zpar, sqnorm, Qzpar, Zpar, Ps, nfixed, zfixed
+
+
+def ratioinv(Pf_FIX, Pf_ILS, n):
     """
     # ----------------------------------------------------------------------- #
     #   ratioinv: Get threshold value for Fixed Failure-rate Ratio Test       #
     #                                                                         #
-    #             mu = ratioinv(Pf_FIX,Pf_ILS,n)                              # 
+    #             mu = ratioinv(Pf_FIX,Pf_ILS,n)                              #
     #                                                                         #
     #   This function determines the appropriate threshold value 'mu' for     #
     #   Ratio Test with Fixed Failure rate Pf. Use tabulated values of 'mu'   #
     #   depending on the ILS failure rate and the number of float ambiguities.#
-    #                                                                         #    
+    #                                                                         #
     #   Input arguments:                                                      #
     #       Pf_FIX: Fixed failure rate (maximum tolerable failure rate)       #
     #               Possible values are 0.010 and 0.001                       #
     #       Pf_ILS: ILS failure rate                                          #
     #       n     : Number of float ambiguities                               #
-    #                                                                         #        
+    #                                                                         #
     #   Output arguments:                                                     #
     #       mu    : Threshold value for Fixed Failure-rate Ratio Test         #
-    #                                                                         #        
+    #                                                                         #
     #   Note:                                                                 #
     #       The function loads tables for different values of Pf from text    #
     #       files (table1.txt, table10.txt), which must be in the same        #
@@ -644,56 +663,57 @@ def ratioinv(Pf_FIX,Pf_ILS,n):
     #               Delft University of Technology                            #
     #   Modified  : 20-JAN-2010 by Hans van der Marel                         #
     # ----------------------------------------------------------------------- #
-    """      
+    """
 
     # Select the right table for the given fixed failure rate
-    kPf = round(Pf_FIX*1000)
+    kPf = round(Pf_FIX * 1000)
 
-    if kPf == 1: # fixed failure rate of 0.1%
-        f_in         = open('./table1.txt','r')
-        ratio_tab    = np.zeros((31,64))
-        ratio_tab[:] = np.nan        
-    elif kPf == 10: # fixed failure rate of 1%
-        f_in         = open('./table10.txt','r')
-        ratio_tab    = np.zeros((31,41))
-        ratio_tab[:] = np.nan        
+    if kPf == 1:  # fixed failure rate of 0.1%
+        f_in = open("./table1.txt", "r")
+        ratio_tab = np.zeros((31, 64))
+        ratio_tab[:] = np.nan
+    elif kPf == 10:  # fixed failure rate of 1%
+        f_in = open("./table10.txt", "r")
+        ratio_tab = np.zeros((31, 41))
+        ratio_tab[:] = np.nan
     else:
         print("Incorrect value for Pf_FIX.")
         raise SystemExit
-    
+
     # Read the table
-    for line_idx,line in enumerate(f_in,0):
-    
+    for line_idx, line in enumerate(f_in, 0):
+
         if line:
-        
+
             # Split every read line
             try:
                 line = line.split()
             except:
                 continue
-        
-            for i in range(0,len(line)):
-                ratio_tab[line_idx,i]=float(line[i])  
+
+            for i in range(0, len(line)):
+                ratio_tab[line_idx, i] = float(line[i])
 
     # Make sure n is within the table's range
     if n < 1:
-        print('n must be larger than 0')
+        print("n must be larger than 0")
         raise SystemExit
-    if n > len(ratio_tab[0])-1:
-        n = len(ratio_tab[0])-2
+    if n > len(ratio_tab[0]) - 1:
+        n = len(ratio_tab[0]) - 2
 
     # Use linear interpolation to find the treshhold value for the given Pf_ILS
-    mu = np.interp(Pf_ILS,ratio_tab[:,0],ratio_tab[:,n])
-    
-    return mu    
-    
-def main(ahat,Qahat,method=1,ncands=2,P0=0.995,mu=1):
+    mu = np.interp(Pf_ILS, ratio_tab[:, 0], ratio_tab[:, n])
+
+    return mu
+
+
+def main(ahat, Qahat, method=1, ncands=2, P0=0.995, mu=1):
     """
     # ----------------------------------------------------------------------- #
     #   main: Main LAMBDA function                                            #
     #                                                                         #
     #         afixed,sqnorm,Ps,Qzhat,Z,nfixed,mu = \                          #
-    #                                 main(ahat,Qahat,method,ncands,P0,mu)    # 
+    #                                 main(ahat,Qahat,method,ncands,P0,mu)    #
     #                                                                         #
     #   This is the main function of the LAMBDA software package. By default, #
     #   the ILS method will be used for integer estimation based on the       #
@@ -713,7 +733,7 @@ def main(ahat,Qahat,method=1,ncands=2,P0=0.995,mu=1):
     #           in the Matlab Version 3.0 software. The solution will be the  #
     #           same with both methods, but the search-and-shrink method is   #
     #           known to be faster.                                           #
-    #                                                                         #               
+    #                                                                         #
     #   Input arguments:                                                      #
     #       ahat  : Float ambiguities (should be decorrelated for             #
     #               computational efficiency; 1D numpy array)                 #
@@ -732,7 +752,7 @@ def main(ahat,Qahat,method=1,ncands=2,P0=0.995,mu=1):
     #                 (available options 0.010 or 0.001) [default=0.001]      #
     #       mu    : Fixed threshold value for Ratio Test                      #
     #               (value must be between 0 and 1)                           #
-    #                                                                         #        
+    #                                                                         #
     #   Output arguments:                                                     #
     #       afixed: Estimated integers (n-by-ncands 2D numpy array), sorted   #
     #               according to the corresponding squared norms,             #
@@ -771,7 +791,7 @@ def main(ahat,Qahat,method=1,ncands=2,P0=0.995,mu=1):
     #           Hence, the squared norm of the best (ILS) integer solution is #
     #           in the numerator. In literature often the reciprocal is used; #
     #           the corresponding critical value is then c=1/mu.              #
-    #                                                                         #        
+    #                                                                         #
     # ----------------------------------------------------------------------- #
     #   Function  : main                                                      #
     #   Date      : 01-SEP-2012                                               #
@@ -781,101 +801,97 @@ def main(ahat,Qahat,method=1,ncands=2,P0=0.995,mu=1):
     #               Mathematical Geodesy and Positioning,                     #
     #               Delft University of Technology                            #
     # ----------------------------------------------------------------------- #
-    """       
-    
+    """
+
     # If ILS/PAR method is not used, only a unique solution is available
-    if method in [2,3]:
+    if method in [2, 3]:
         ncands = 1
-        
+
     # Default values for Ratio Test
     if method == 5:
         FFRT = 1
         if P0 == 0.995:
-            P0 = 0.001        
+            P0 = 0.001
     else:
         mu = 1
-        
+
     # Get the number of ambiguities from the dimension of the vc-matrix
-    n      = len(Qahat)
+    n = len(Qahat)
     nfixed = n
     sqnorm = []
-    
+
     # Tests on inputs ahat and Qahat
-    
+
     # Is the Qahat symmetric ?
-    if ((Qahat-Qahat.T)<1e-8).all()==False:
-        print("Variance-covariance matrix of float estimated ambiguities " + \
-              "is not symmetric!")
+    if ((Qahat - Qahat.T) < 1e-8).all() == False:
+        print("Variance-covariance matrix of float estimated ambiguities " + "is not symmetric!")
         raise SystemExit
-        
-    # Is the Qahat positive-definite ?    
-    
+
+    # Is the Qahat positive-definite ?
+
     # Get the eigenvalues (D) and eigenvectors (V) of Qahat
-    D,V = eig(Qahat)
-    
-    # Check the positive-definiteness    
-    if sum(D>0) != n:
-        print("Variance-covariance matrix of float estimated ambiguities " + \
-              "is not positive definite!")
+    D, V = eig(Qahat)
+
+    # Check the positive-definiteness
+    if sum(D > 0) != n:
+        print("Variance-covariance matrix of float estimated ambiguities " + "is not positive definite!")
         raise SystemExit
-        
+
     # Do the Qahat and ahat have identical dimensions ?
     if len(ahat) != n:
-        print("Variance-covariance matrix and vector of float estimated " + \
-              "ambiguities do not have identical dimensions")
+        print("Variance-covariance matrix and vector of float estimated " + "ambiguities do not have identical dimensions")
         raise SystemExit
-        
+
     # Is the ambiguity vector an array ?
     if ahat.size > 0:
-        if not isinstance(ahat,np.ndarray):
+        if not isinstance(ahat, np.ndarray):
             print("The ambiguity vector is not an array!")
             raise SystemExit
     else:
         print("The ambiguity vector is empty!")
         raise SystemExit
-        
-    # Remove integer numbers from float solution, so that all values are 
+
+    # Remove integer numbers from float solution, so that all values are
     # between -1 and 1 (for computational convenience only)
-    ahat,incr = np.modf(ahat)
-    
+    ahat, incr = np.modf(ahat)
+
     # Compute the Z matrix based on the decomposition Q=L^T*D*L. The transformed
     # float solution: \hat{a}=Z^T*ahat, Qzhat=Z^T*Qahat*Z
-    Qzhat,Z,L,D,zhat,iZt = decorrel(Qahat,ahat)
-    
+    Qzhat, Z, L, D, zhat, iZt = decorrel(Qahat, ahat)
+
     # Compute the bootstrapped success rate
     Ps = SR_IB_2(D)
-    
-    # Integer ambiguity estimation (and validation)    
-    if method == 1: # ILS with shrinking search
-        zfixed,sqnorm = ssearch(zhat,L,D,ncands)
-    elif method == 2: # Integer rounding    
+
+    # Integer ambiguity estimation (and validation)
+    if method == 1:  # ILS with shrinking search
+        zfixed, sqnorm = ssearch(zhat, L, D, ncands)
+    elif method == 2:  # Integer rounding
         zfixed = np.round(zhat)
-    elif method == 3: # Integer bootstrapping
-        zfixed = bootstrap(zhat,L)
-    elif method == 4: # PAR
-        zpar,sqnorm,Qzhat,Z,Ps,nfixed,zfixed = \
-                                          parsearch(zhat,Qzhat,Z,L,D,P0,ncands)
+    elif method == 3:  # Integer bootstrapping
+        zfixed = bootstrap(zhat, L)
+    elif method == 4:  # PAR
+        zpar, sqnorm, Qzhat, Z, Ps, nfixed, zfixed = parsearch(zhat, Qzhat, Z, L, D, P0, ncands)
         if nfixed == 0:
             ncands = 1
-    elif method == 5: # ILS with Ratio Test
-        zfixed,sqnorm = ssearch(zhat,L,D,ncands)
+    elif method == 5:  # ILS with Ratio Test
+        zfixed, sqnorm = ssearch(zhat, L, D, ncands)
         if FFRT == 1:
-            if 1-Ps>P0:
-                mu = ratioinv(P0,1-Ps,n)
+            if 1 - Ps > P0:
+                mu = ratioinv(P0, 1 - Ps, n)
             else:
                 mu = 1
-                
+
         # Perform Ratio Test
-        if sqnorm[0]/sqnorm[1] > mu: # rejection: keep float solution
+        if sqnorm[0] / sqnorm[1] > mu:  # rejection: keep float solution
             zfixed = zhat
             nfixed = 0
             ncands = 1
-    
+
     # Perform the back-transformation and add the increments
-    afixed = iZt.dot(zfixed)    
+    afixed = iZt.dot(zfixed)
     if ncands > 1:
-        afixed += numpy.matlib.repmat(incr.reshape(n,1),1,ncands)
+        afixed += numpy.matlib.repmat(incr.reshape(n, 1), 1, ncands)
     else:
         afixed += incr
 
-    return afixed,sqnorm,Ps,Qzhat,Z,nfixed,mu                                                                 
+    return afixed, sqnorm, Ps, Qzhat, Z, nfixed, mu

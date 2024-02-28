@@ -12,14 +12,15 @@ m2ph = 4 * np.pi / WAVELENGTH
 
 
 class ILS_IB_estimator:
-    def __init__(self, param_file):
+    def __init__(self, param_file, data_id, check_index):
         param = deepcopy(param_file)
         self.param_file = param_file
         self.Nifg = param_file["Nifg"]
         self.revisit_cycle = param_file["revisit_cycle"]
         self.Bn_sigma = param_file["Bn"]
         self.noise_level = param_file["noise_level"]
-        self.normal_baseline = param_file["normal_baseline"]
+        rng_normal = np.random.default_rng(check_index)
+        self.normal_baseline = rng_normal.normal(0, 333, param_file["Nifg"])
         self.param_sim = param["param_simulation"]
         self.param_pseudo = param["param_pseudo"]
         self.param_name = param["param_name"]
@@ -95,7 +96,7 @@ class ILS_IB_estimator:
     @staticmethod
     def calculate_Q_a(Q_y, A, Q_b0):
         # 获取一个猜测的模糊度协方差矩阵,利用协方差计算性质（传递性）
-        Q_a = 1 / (4 * np.pi**2) * (Q_y + A @ Q_b0 @ A.T)
+        Q_a = (Q_y + A @ Q_b0 @ A.T) / (4 * np.pi**2)
         Q_a = np.tril(Q_a) + np.tril(Q_a, -1).T
         return Q_a
 
@@ -121,7 +122,7 @@ class ILS_IB_estimator:
             r[i] = 0.5 * (res.T @ Qy_i @ Q_v @ Qy_i @ res)
         N = 2 * (Q_P_A * Q_P_A.T)
         VC = np.linalg.inv(N) @ r
-        VC[VC < 0] = (10 / 180 * np.pi) ** 2  # minimum variance factor
+        VC[VC < 1e-10] = (10 / 180 * np.pi) ** 2  # minimum variance factor
         # 2nd iteration:
         Qy = np.diag(VC)
         Qy_i = np.diag(1 / np.diag(Qy))  # inverse of diagonal matrix
@@ -136,7 +137,7 @@ class ILS_IB_estimator:
             r[i] = 0.5 * (res.T @ Qy_i @ Q_v @ Qy_i @ res)
         N = 2 * (Q_P_A * Q_P_A.T)
         VC = np.linalg.inv(N) @ r
-        VC[VC < 0] = (10 / 180 * np.pi) ** 2  # minimum variance factor
+        VC[VC < 1e-10] = (10 / 180 * np.pi) ** 2  # minimum variance factor
         return VC
 
     def guess_Q_a(self):
@@ -165,7 +166,7 @@ class ILS_IB_estimator:
         self.sim_observed_phase()
         # VC矩阵修正，包含第一次ILS估计
         self.VC_upgrade()
-        # print(self.Q_a_guess_new)
+        # print(self.Q_a_guess_new.shape)
         # 第二次ILS估计。基于新的模糊度协方差矩阵，以及根据先验信息得到的模糊度解
         a_fixed_group = lambda_method.main(self.a_float, self.Q_a_guess_new, method=1, ncands=2)[0]
         # 计算v,h参数
@@ -173,71 +174,124 @@ class ILS_IB_estimator:
         x2 = self.compute_parameters(a_fixed_group[:, 1], self.arc_phase, self.A)
         return a_fixed_group, x1, x2
 
+    # def check_success_rate(self):
+    #     i = 0
+    #     est_data = np.zeros(2 * self.check_times)
+    #     a_data_1st = np.zeros((self.check_times, self.Nifg))
+    #     for k in range(self.check_times):
+    #         a_fixed_group, x1, x2 = self.ils_estimation()
+    #         if abs((x1[0] - self.param_sim["height"]) < 0.5 and abs(x1[1] - self.param_sim["velocity"]) < 0.0005) or abs(
+    #             (x2[0] - self.param_sim["height"]) < 0.5 and abs(x2[1] - self.param_sim["velocity"]) < 0.0005
+    #         ):
+    #             i += 1
+    #         est_data[k] = x1[0]
+    #         est_data[k + self.check_times] = x1[1]
+    #         a_data_1st[k, :] = a_fixed_group[:, 0]
+    #     success_rate = i / self.check_times
+    #     return success_rate, est_data, a_data_1st
 
-#     def check_success_rate(self):
-#         i = 0
-#         est_data = np.zeros(2 * self.check_times)
-#         a_data_1st = np.zeros((self.check_times, self.Nifg))
-#         for k in range(self.check_times):
-#             a_fixed_group, x1, x2 = self.ils_estimation()
-#             if abs((x1[0] - self.param_sim["height"]) < 0.5 and abs(x1[1] - self.param_sim["velocity"]) < 0.0005) or abs(
-#                 (x2[0] - self.param_sim["height"]) < 0.5 and abs(x2[1] - self.param_sim["velocity"]) < 0.0005
-#             ):
-#                 i += 1
-#             est_data[k] = x1[0]
-#             est_data[k + self.check_times] = x1[1]
-#             a_data_1st[k, :] = a_fixed_group[:, 0]
-#         success_rate = i / self.check_times
-#         return success_rate, est_data, a_data_1st
 
-
-# def main(param, v_range, shared_dict, process_num):
-#     print("进程 %s" % process_num)
-#     success_rate_data = np.zeros(len(v_range))
-#     data_all = {process_num: {}}
-#     for j in range(len(v_range)):
-#         param["param_simulation"]["velocity"] = v_range[j]
-#         ils_est = ILS_IB_estimator(param)
-#         success_rate, est_data, a_data_1st = ils_est.check_success_rate()
-#         success_rate_data[j] = success_rate
-#         k = j + (len(v_range) + 1) * process_num
-#         data_all[process_num].update({k: est_data})
-#         del ils_est
-#     k = len(v_range) + (len(v_range) + 1) * process_num
-#     data_all[process_num].update({k: success_rate_data})
-#     shared_dict.update(data_all)
-#     print("process %s done!" % process_num)
 def check_success_rate(param):
-    est_data = np.zeros(2 * param["check_times"])
+    est_data_h = np.zeros(param["check_times"])
+    est_data_v = np.zeros(param["check_times"])
     a_data_1st = np.zeros((param["check_times"], param["Nifg"]))
     i = 0
     for k in range(param["check_times"]):
+        param["normal_baseline"] = np.random.normal(0, 333, param["Nifg"])
         ils_est = ILS_IB_estimator(param)
         a_fixed_group, x1, x2 = ils_est.ils_estimation()
         if abs((x1[0] - param["param_simulation"]["height"]) < 0.5 and abs(x1[1] - param["param_simulation"]["velocity"]) < 0.0005) or abs(
             (x2[0] - param["param_simulation"]["height"]) < 0.5 and abs(x2[1] - param["param_simulation"]["velocity"]) < 0.0005
         ):
             i += 1
-        est_data[k] = x1[0]
-        est_data[k + param["check_times"]] = x1[1]
+        est_data_h[k] = x1[0]
+        est_data_v[k] = x1[1]
         a_data_1st[k, :] = a_fixed_group[:, 0]
         del ils_est
     success_rate = i / param["check_times"]
-    return success_rate, est_data, a_data_1st
+    print(success_rate)
+    return success_rate, est_data_h, est_data_v, a_data_1st
 
 
-def main(param, v_range, shared_dict, process_num):
+# def main(param, v_range, shared_dict, process_num):
+#     print("进程 %s" % process_num)
+#     data_all = {process_num: {}}
+#     for j in range(len(v_range)):
+#         data_id=j+(len(v_range))*process_num
+#         param["param_simulation"]["velocity"] = v_range[j]
+#         success_rate, est_data_h,est_data_v, a_data_1st = check_success_rate(param)
+#         data_all[process_num].update({data_id: {"success_rate": success_rate, "est_data_h": est_data_h,"est_data_v": est_data_v, "a_data_1st": a_data_1st}})
+#     shared_dict.update(data_all)
+#     print("process %s done!" % process_num)
+def main(param, v_range, process_num):
     print("进程 %s" % process_num)
-    success_rate_data = np.zeros(len(v_range))
     data_all = {process_num: {}}
     for j in range(len(v_range)):
+        data_id = j + (len(v_range)) * process_num
         param["param_simulation"]["velocity"] = v_range[j]
-        success_rate, est_data, a_data_1st = check_success_rate(param)
-        success_rate_data[j] = success_rate
-        k = j + (len(v_range) + 1) * process_num
-        data_all[process_num].update({k: est_data})
-
-    k = len(v_range) + (len(v_range) + 1) * process_num
-    data_all[process_num].update({k: success_rate_data})
-    shared_dict.update(data_all)
+        success_rate, est_data_h, est_data_v, a_data_1st = check_success_rate(param)
+        data_all[process_num].update({data_id: {"success_rate": success_rate, "est_data_h": est_data_h, "est_data_v": est_data_v, "a_data_1st": a_data_1st}})
+    # shared_dict.update(data_all)
     print("process %s done!" % process_num)
+    return data_all
+
+
+def lab(param_file, change_name, change_data, V, data_id):
+    # print(f"v={V}start")
+    data = {}
+    param_file[change_name] = change_data
+    param_file["param_simulation"]["velocity"] = V
+    est_data_h = np.zeros(param_file["check_times"])
+    est_data_v = np.zeros(param_file["check_times"])
+    a_data_1st = np.zeros((param_file["check_times"], param_file["Nifg"]))
+    success_time = 0
+    for i in range(param_file["check_times"]):
+        ils_est = ILS_IB_estimator(param_file, data_id, i)
+        a, x1, x2 = ils_est.ils_estimation()
+        est_data_h[i] = x1[0]
+        est_data_v[i] = x1[1]
+        a_data_1st[i, :] = a[:, 0]
+        if abs((x1[0] - param_file["param_simulation"]["height"]) < 0.5 and abs(x1[1] - param_file["param_simulation"]["velocity"]) < 0.0005) or abs(
+            (x2[0] - param_file["param_simulation"]["height"]) < 0.5 and abs(x2[1] - param_file["param_simulation"]["velocity"]) < 0.0005
+        ):
+            success_time += 1
+    success_rate = success_time / param_file["check_times"]
+    data[data_id] = {"success_rate": success_rate, "est_data_h": est_data_h, "est_data_v": est_data_v, "a_data_1st": a_data_1st}
+    print(f"v={V} done")
+    return data
+
+
+# def data_collect(data, changed_param, V_orig, process_num_all, test_length):
+#     success_rate = np.zeros((len(changed_param), len(V_orig)))
+#     v_est_data = []
+#     h_est_data = []
+#     for k in range(len(changed_param)):
+#         for i in range(process_num_all):
+#             for j in range(test_length):
+#                 data_id = i * test_length + j
+#                 success_rate[k][data_id] = data[k][i][data_id]["success_rate"]
+#                 v_est_data.append(data[k][i][data_id]["est_data_v"].reshape(1, -1))
+#                 h_est_data.append(data[k][i][data_id]["est_data_v"].reshape(1, -1))
+#     v_est_data = np.concatenate(v_est_data, axis=0)
+#     h_est_data = np.concatenate(h_est_data, axis=0)
+#     return success_rate, v_est_data, h_est_data
+def data_collect(data, changed_param_length, V_orig_length):
+    success_rate = np.zeros((changed_param_length, V_orig_length))
+    v_est_data = []
+    h_est_data = []
+    for k in range(changed_param_length):
+        for i in range(V_orig_length):
+            success_rate[k][i] = data[k][i]["success_rate"]
+            v_est_data.append(data[k][i]["est_data_v"].reshape(1, -1))
+            h_est_data.append(data[k][i]["est_data_v"].reshape(1, -1))
+    v_est_data = np.concatenate(v_est_data, axis=0)
+    h_est_data = np.concatenate(h_est_data, axis=0)
+    return success_rate, v_est_data, h_est_data
+
+
+def dict_collect(data_list):
+    # 将列中的字典合并
+    data = {}
+    for i in range(len(data_list)):
+        data.update(data_list[i])
+    return data
