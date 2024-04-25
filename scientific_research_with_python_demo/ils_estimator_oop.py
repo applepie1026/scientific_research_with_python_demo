@@ -54,6 +54,7 @@ class ILS_IB_estimator:
 
     @staticmethod
     def _add_gaussian_noise1(Nifg, noise_level_set):
+        np.random.seed(0)
         noise_phase = np.random.normal(0, np.pi * noise_level_set / 180, Nifg)
         return noise_phase
 
@@ -73,13 +74,17 @@ class ILS_IB_estimator:
 
     def guess_a_float(self):
         # calculate the float ambiguity
-        phase = self.arc_phase
-        # print(phase, phase.shape)
-        for key in self.param_name:
-            phase -= self._par2ph[key] * self.param_pseudo[key]
-
+        # print("phase_obs:", self.arc_phase)
+        # phase = self.arc_phase
+        # print(id(phase), id(self.arc_phase))
+        # for key in self.param_name:
+        #     print(key)
+        #     phase -= self._par2ph[key] * self.param_pseudo[key]
+        phase = self.arc_phase - self._par2ph["velocity"] * self.param_pseudo["velocity"] - self._par2ph["height"] * self.param_pseudo["height"]
+        # print("phase:", phase, phase.shape)
         self.a_float = (phase / (2 * np.pi)).reshape((self.Nifg))
-        # print(self.a_float, type(self.a_float))
+        # print("a_hat:", self.a_float, type(self.a_float))
+        # print("phase_obs:", self.arc_phase)
 
     # VC Estimation
     def guess_VC(self):
@@ -198,7 +203,7 @@ def check_success_rate(param):
     i = 0
     for k in range(param["check_times"]):
         param["normal_baseline"] = np.random.normal(0, 333, param["Nifg"])
-        ils_est = ILS_IB_estimator(param)
+        ils_est = ILS_IB_estimator(param, 0, k)
         a_fixed_group, x1, x2 = ils_est.ils_estimation()
         if abs((x1[0] - param["param_simulation"]["height"]) < 0.5 and abs(x1[1] - param["param_simulation"]["velocity"]) < 0.0005) or abs(
             (x2[0] - param["param_simulation"]["height"]) < 0.5 and abs(x2[1] - param["param_simulation"]["velocity"]) < 0.0005
@@ -206,6 +211,7 @@ def check_success_rate(param):
             i += 1
         est_data_h[k] = x1[0]
         est_data_v[k] = x1[1]
+        print(x1[0], x1[1])
         a_data_1st[k, :] = a_fixed_group[:, 0]
         del ils_est
     success_rate = i / param["check_times"]

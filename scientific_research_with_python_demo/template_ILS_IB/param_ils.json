@@ -4,7 +4,7 @@
 "param_pseudo": {"height":0,"velocity":0},
 "noise_level": 5, 
 "param_orig": {"height":0,"velocity":0},
-"param_name": ["velocity"], 
+"param_name": ["height","velocity"], 
 "sigma_v": 5, 
 "sigma_h": 10, 
 "sigma_y": 40,

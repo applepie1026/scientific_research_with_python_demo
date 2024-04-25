@@ -1,6 +1,6 @@
 {"Nifg": 30, 
 "param_simulation": {"height":10,"velocity":0.005},
-"noise_level": 5, 
+"noise_level": 10, 
 "step_orig": {"height":0.1,"velocity":0.0001}, 
 "param_orig": {"height":0,"velocity":0},
 "param_name": ["height","velocity"], 
@@ -10,5 +10,5 @@
 "normal_baseline":[],
 "Bn":333,
 "flatten_num":100,
-"faltten_range":10
+"flatten_range":10
 }

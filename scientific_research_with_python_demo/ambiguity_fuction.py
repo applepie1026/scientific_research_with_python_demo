@@ -46,7 +46,8 @@ class Periodogram_estimation:
         self.revisit_cycle = param["revisit_cycle"]
         # self.normal_baseline = np.array(param_file['normal_baseline'])
         self.Bn = param["Bn"]
-        self.normal_baseline = np.random.randn(1, self.Nifg) * self.Bn
+        # self.normal_baseline = np.random.randn(1, self.Nifg) * self.Bn
+        self.normal_baseline = np.random.normal(0, self.Bn, (1, self.Nifg))
         # self.normal_baseline = (np.random.normal(0, 50, self.Nifg) + np.arange(10, 310, 10)).reshape(1, self.Nifg)
         # np.random.normal(0, 5, self.Nifg) +
         self._param = param["param_orig"]
@@ -357,6 +358,10 @@ def compute_success_rate1(param_file, save_path, check_times=1000):
     success_count = 0
     estimated_param_true = np.array([])
     estimated_param_error = np.array([])
+    estimated_param_true_h = np.array([])
+    estimated_param_true_v = np.array([])
+    estimated_param_error_h = np.array([])
+    estimated_param_error_v = np.array([])
     for i in range(check_times):
         est = Periodogram_estimation(param_file)
         # simulate arc phase ,the normal baseline and the noise phase are randomly generated
@@ -373,8 +378,12 @@ def compute_success_rate1(param_file, save_path, check_times=1000):
                 # print(est._param)
         else:
             if abs(est._param["height"] - est.param_sim["height"]) < 0.5 and abs(est._param["velocity"] - est.param_sim["velocity"]) < 0.0005:
-                estimated_param_true = np.append(estimated_param_true, list(est._param.values()))
+                estimated_param_true_h = np.append(estimated_param_true_h, est._param["height"])
+                estimated_param_true_v = np.append(estimated_param_true_v, est._param["velocity"])
                 success_count += 1
+            else:
+                estimated_param_error_h = np.append(estimated_param_error_h, est._param["height"])
+                estimated_param_error_v = np.append(estimated_param_error_v, est._param["velocity"])
                 # print(est._param)
 
         del est
@@ -553,6 +562,51 @@ def param_experiment_v_data_sigma(test_param_name, test_param_range, v_range, pa
         data_all[process_num].update({k: success_rate})
         shared_dict.update(data_all)
     print("success_rate_save !")
+
+
+def compute_success_rate4(param_file, check_times=1000):
+    """compute the success rate of the parameter estimation based on periodogram method by run the process 100 times
+        the acceptable estimation error is set as 0.05 for height and 0.00005 for velocity
+    Parameters
+    ----------
+    param_file : _dict_
+        input parameters for the simulation and estimation
+    """
+    success_count = 0
+    estimated_param_true_h = []
+    estimated_param_true_v = []
+    estimated_param_error_h = []
+    estimated_param_error_v = []
+    for i in range(check_times):
+        est = Periodogram_estimation(param_file)
+        # simulate arc phase ,the normal baseline and the noise phase are randomly generated
+        est.simulate_arc_phase()
+        est.searching_loop()
+        # print(est._param)
+        if abs(est._param["height"] - est.param_sim["height"]) < 0.5 and abs(est._param["velocity"] - est.param_sim["velocity"]) < 0.0005:
+            estimated_param_true_h.append(est._param["height"])
+            estimated_param_true_v.append(est._param["velocity"])
+            success_count += 1
+
+        else:
+            estimated_param_error_h.append(est._param["height"])
+            estimated_param_error_v.append(est._param["velocity"])
+            # print(est._param)
+
+        del est
+    return success_count / check_times, estimated_param_true_h, estimated_param_error_h
+
+
+def param_experiment_h_data_sigma(param_file, check_times, process_num, dBn):
+    param_file["Bn"] = dBn
+    # print(f"{dBn}")
+    data_all = {}
+    success_rate, estimated_param_true_h, estimated_param_error_h = compute_success_rate4(param_file, check_times)
+    est_data = estimated_param_true_h + estimated_param_error_h
+    # print(est_data)
+    np.array(est_data).reshape(1, check_times)
+    data_all[process_num] = {"success_rate": success_rate, "data_est": est_data}
+    return data_all
 
 
 def data_collect(data, data_length, process_num_all, test_length):

@@ -11,9 +11,9 @@ m2ph = 4 * np.pi / WAVELENGTH
 
 
 class DFT_periodogram:
-    def __init__(self, param_file, data_id, check_num, check_times, data_length) -> None:
+    def __init__(self, param_file, check_num, check_times) -> None:
         param = deepcopy(param_file)
-        self.data_id = data_id
+        # self.data_id = data_id
         self.check_num = check_num
         self.Nifg = param["Nifg"]
         self.param_sim = param["param_simulation"]
@@ -25,11 +25,12 @@ class DFT_periodogram:
         self.revisit_cycle = param["revisit_cycle"]
         self.Bn = param["Bn"]
         # self.rng_seed = data_id
-        self.rng_seed_bn = check_num + data_id * check_times
-        self.rng_seed_noise = check_num + data_length * check_times
-        self.rng_flatten = check_num + 2 * data_length * check_times
-        rng = np.random.default_rng(self.rng_seed_bn)
-        self.normal_baseline = rng.normal(0, param["Bn"], param["Nifg"])
+        # self.rng_seed_bn = check_num + data_id * check_times
+        self.rng_seed_noise = check_num + check_times
+        self.rng_flatten = check_num + 2 * check_times
+        np.random.seed(check_num)
+        self.normal_baseline = np.random.normal(0, self.Bn, self.Nifg)
+        # self.normal_baseline = param["normal_baseline"]
         # print(f"{check_num},{data_id}:{self.normal_baseline}")
         self.flatten_num = param["flatten_num"]
         self.flatten_range = param["flatten_range"]
@@ -47,9 +48,9 @@ class DFT_periodogram:
         return np.mod(phase + np.pi, 2 * np.pi) - np.pi
 
     @staticmethod
-    def _add_gaussian_noise1(Nifg, noise_level_set, rng_seed):
-        rng_noise = np.random.default_rng(rng_seed)
-        noise_phase = rng_noise.normal(0, np.pi * noise_level_set / 180, Nifg)
+    def _add_gaussian_noise1(Nifg, noise_level_set, rng_seed_noise):
+        np.random.seed(rng_seed_noise)
+        noise_phase = np.random.normal(0, np.pi * noise_level_set / 180, Nifg)
         return noise_phase
 
     @staticmethod
@@ -78,8 +79,8 @@ class DFT_periodogram:
 
     def DFT_phase_flatten(self):
         self.phase_flatten = np.zeros(len(self.searching_v))
-        rng_flatten = np.random.default_rng(self.rng_flatten)
-        for h in rng_flatten.integers(-self.flatten_range, self.flatten_range, self.flatten_num):
+        np.random.seed(self.rng_flatten)
+        for h in np.random.randint(self.flatten_range[0], self.flatten_range[1], self.flatten_num):
             flatten_phase = self.phase_obs - self.h2ph * h
             DFT_signal = self.dtft_af_array(flatten_phase, self.v2ph, self.Nifg, self.searching_v)
             self.phase_flatten += DFT_signal
@@ -132,35 +133,56 @@ def compute_success_rate(param, check_times, data_id, data_length):
             success_rate += 1
         v_est_data[i] = param_est.v_est
         h_est_data[i] = param_est.h_est
-        # print(f"v={param_est.v_est}, h={param_est.h_est}")
+        print(f"v={param_est.v_est}, h={param_est.h_est}")
         del param_est
     return success_rate / check_times, v_est_data, h_est_data
 
 
-def compute_success_rate_multi(param, check_times, data_range, process_id, data_length, shared_dict):
-    print(f"process {process_id} start!")
-    data_all = {process_id: {}}
-    for i in range(len(data_range)):
-        data_id = i + process_id * len(data_range)
-        param["param_simulation"]["velocity"] = data_range[i]
-        success_rate, v_est_data, h_est_data = compute_success_rate(param, check_times, data_id, data_length)
-        print(f"process {process_id} data_id {data_id} success_rate: {success_rate}")
-        data_all[process_id].update({data_id: {"success_rate": success_rate, "v_est_data": v_est_data, "h_est_data": h_est_data}})
-    shared_dict.update(data_all)
-    print(f"process {process_id} finished!")
+def compute_est_data(param, check_times, data_id, v):
+    param["param_simulation"]["velocity"] = v
+    # print(param["param_simulation"])
+    v_est_data = np.zeros(check_times)
+    h_est_data = np.zeros(check_times)
+    data = {}
+    success_rate = 0
+    for i in range(check_times):
+        param_est = DFT_periodogram(param, i, check_times)
+        param_est.param_estimation_correct()
+        if abs(param_est.h_est - param["param_simulation"]["height"]) <= 0.5 and abs(param_est.v_est - param["param_simulation"]["velocity"]) <= 0.0005:
+            success_rate += 1
+        v_est_data[i] = param_est.v_est
+        h_est_data[i] = param_est.h_est
+        # print(f"v={param_est.v_est}, h={param_est.h_est}")
+        del param_est
+    # data[data_id] = {"v_est_data": v_est_data, "h_est_data": h_est_data}
+    data[data_id] = {"success_rate": success_rate / check_times, "est_data": np.concatenate((v_est_data, h_est_data))}
+    return data
 
 
-def compute_success_rate_multi_h(param, check_times, data_range, process_id, data_length, shared_dict):
-    print(f"process {process_id} start!")
-    data_all = {process_id: {}}
-    for i in range(len(data_range)):
-        data_id = i + process_id * len(data_range)
-        param["param_simulation"]["height"] = data_range[i]
-        success_rate, v_est_data, h_est_data = compute_success_rate(param, check_times, data_id, data_length)
-        print(f"process {process_id} data_id {data_id} success_rate: {success_rate}")
-        data_all[process_id].update({data_id: {"success_rate": success_rate, "v_est_data": v_est_data, "h_est_data": h_est_data}})
-    shared_dict.update(data_all)
-    print(f"process {process_id} finished!")
+# def compute_success_rate_multi(param, check_times, data_range, process_id, data_length, shared_dict):
+#     print(f"process {process_id} start!")
+#     data_all = {process_id: {}}
+#     for i in range(len(data_range)):
+#         data_id = i + process_id * len(data_range)
+#         param["param_simulation"]["velocity"] = data_range[i]
+#         success_rate, v_est_data, h_est_data = compute_success_rate(param, check_times, data_id, data_length)
+#         print(f"process {process_id} data_id {data_id} success_rate: {success_rate}")
+#         data_all[process_id].update({data_id: {"success_rate": success_rate, "v_est_data": v_est_data, "h_est_data": h_est_data}})
+#     shared_dict.update(data_all)
+#     print(f"process {process_id} finished!")
+
+
+# def compute_success_rate_multi_h(param, check_times, data_range, process_id, data_length, shared_dict):
+#     print(f"process {process_id} start!")
+#     data_all = {process_id: {}}
+#     for i in range(len(data_range)):
+#         data_id = i + process_id * len(data_range)
+#         param["param_simulation"]["height"] = data_range[i]
+#         success_rate, v_est_data, h_est_data = compute_success_rate(param, check_times, data_id, data_length)
+#         print(f"process {process_id} data_id {data_id} success_rate: {success_rate}")
+#         data_all[process_id].update({data_id: {"success_rate": success_rate, "v_est_data": v_est_data, "h_est_data": h_est_data}})
+#     shared_dict.update(data_all)
+#     print(f"process {process_id} finished!")
 
 
 def data_collect(data, changed_param, V_orig, process_num_all, test_length):
@@ -178,3 +200,10 @@ def data_collect(data, changed_param, V_orig, process_num_all, test_length):
     v_est_data = np.concatenate(v_est_data, axis=0)
     h_est_data = np.concatenate(h_est_data, axis=0)
     return success_rate, v_est_data, h_est_data
+
+
+def accuracy(data, data_true):
+    # print(data, data_true)
+    # print(data - data_true)
+    return np.mean(abs(data - data_true))
+    # return np.sqrt(np.mean((data - data_true) ** 2))

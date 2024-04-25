@@ -92,7 +92,7 @@ def check_success_rate(v, h, Nifg, noise_level, dT, Bn, h_bound, v_bound, sig0, 
     success_rate = []
     for k in range(check_times):
         afixed, a, Ps, x1, x2 = main(v, h, Nifg, noise_level, dT, Bn, h_bound, v_bound, sig0)
-
+        print(x1)
         if abs((x1[0] - h) < 0.5 and abs(x1[1] - v) < 0.0005) or abs((x2[0] - h) < 0.5 and abs(x2[1] - v) < 0.0005):
             i += 1
     return i / check_times

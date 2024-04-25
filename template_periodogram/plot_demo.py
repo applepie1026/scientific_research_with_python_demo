@@ -277,34 +277,40 @@ import csv
 # # V_orig_dT = np.array([1, 5, 10, 20, 30, 50, 60, 80, 100, 150]) * 0.001
 
 
-def RMSE(data, true_data):
-    return np.sqrt(np.mean((data - true_data) ** 2))
+# def RMSE(data, true_data):
+#     return np.sqrt(np.mean((data - true_data) ** 2))
 
 
-def sigma_data(data, true_data, change_data, v_length=170):
-    sigama_v = np.zeros((len(true_data), len(change_data)))
-    for i in range(len(true_data)):
-        for j in range(len(change_data)):
-            sigama_v[i, j] = RMSE(data[i + j * v_length, :], true_data[i])
+# def sigma_data(data, true_data, change_data, v_length=170):
+#     sigama_v = np.zeros((len(true_data), len(change_data)))
+#     for i in range(len(true_data)):
+#         for j in range(len(change_data)):
+#             sigama_v[i, j] = RMSE(data[i + j * v_length, :], true_data[i])
 
-    return sigama_v
+#     return sigama_v
 
 
 # sigma nifg
-data = np.loadtxt("scientific_research_with_python_demo/data_save/data_save1/Nifg_success_rate_2.txt", delimiter=",")
-data1 = np.loadtxt("scientific_research_with_python_demo/data_save/data_save1/Nifg_est_data_2.txt", delimiter=",")
-Nifg = np.arange(10, 101, 1)
-V_orig = np.arange(1, 132, 1) * 0.001
-print(V_orig[130])
+# data = np.loadtxt("scientific_research_with_python_demo/data_save/data_save1/Nifg_success_rate_2.txt", delimiter=",")
+# data1 = np.loadtxt("scientific_research_with_python_demo/data_save/data_save1/Nifg_est_data_2.txt", delimiter=",")
+# print(data1.shape)
+# print(np.sqrt(np.mean((data1[130, :] - 0.130) ** 2)))
+# print(data[29][131])
+# print(data[29][131])
+# print(data[29][130])
+# Nifg = np.arange(10, 101, 1)
+# V_orig = np.arange(1, 132, 1) * 0.001
+# print(V_orig.shape)
+# print(V_orig[130])
 # x = np.zeros((1, 91))
 # for i in range(91):
 #     x[0, i] = RMSE(data1[131 + i * 170, :], 0.123)
 # # print(data[90, 122])
 # print(x)
 
-sigma_Nifg = sigma_data(data1, V_orig, Nifg)
+# sigma_Nifg = sigma_data(data1, V_orig, Nifg)
 # print(sigma_Nifg.shape)
-np.savetxt("scientific_research_with_python_demo/data_save/data_save1/Nifg_sigma_data_2.txt", sigma_Nifg, delimiter=",")
+# np.savetxt("scientific_research_with_python_demo/data_save/data_save1/Nifg_sigma_data_2.txt", sigma_Nifg, delimiter=",")
 # print(data.shape)
 # print(data1.shape)
 
@@ -336,3 +342,23 @@ np.savetxt("scientific_research_with_python_demo/data_save/data_save1/Nifg_sigma
 # )
 # print(data_65days_est.shape)
 # np.savetxt("scientific_research_with_python_demo/data_save/data_save0/dT_est_data_3_65days_part.txt", data_65days_est, delimiter=",")
+
+
+# sigma_bn_std
+def rmse(data, data_true):
+    return np.sqrt(np.mean((data - data_true) ** 2))
+
+
+def sigma_collect(data_est_h, Bn_len, H_len, H):
+    sigma_h_Bn = np.zeros((H_len, Bn_len))
+    for j in range(Bn_len):
+        for i in range(H_len):
+            sigma_h_Bn[i, j] = rmse(data_est_h[j + i * Bn_len, :], H[i])
+    return sigma_h_Bn
+
+
+data_h = np.loadtxt("scientific_research_with_python_demo/data_save/data_save1/Bn_std_h_est_data.txt", delimiter=",")
+sigma_h = sigma_collect(data_h, 50, 5, [10, 20, 30, 40, 50])
+print(sigma_h)
+# print(np.mean(sigma_h, axis=0))
+np.savetxt("scientific_research_with_python_demo/data_save/data_save1/Bn_std_sigma_data.txt", sigma_h, delimiter=",")
